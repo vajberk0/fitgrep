@@ -98,16 +98,14 @@
 			connectNulls: false,
 		}));
 
-		const leftAxes = yAxes.filter((a) => a.position === 'left').length;
-		const rightAxes = yAxes.filter((a) => a.position === 'right').length;
-
 		const option: any = {
 			animation: false,
 			grid: {
-				left: 60 + leftAxes * 55,
-				right: 30 + rightAxes * 55,
+				left: 20,
+				right: 20,
 				top: 30,
 				bottom: 80,
+				containLabel: false,
 			},
 			tooltip: {
 				trigger: 'axis',
@@ -189,30 +187,11 @@
 
 	function buildYAxis(field: any, index: number) {
 		const isRight = index % 2 === 1;
-		const offset = Math.floor(index / 2) * 55;
-		const isPace = field.unit === 'min/km';
 		return {
 			type: 'value' as const,
-			name: `${field.label}${field.unit ? ` (${field.unit})` : ''}`,
-			nameTextStyle: {
-				color: field.color,
-				fontSize: 11,
-				padding: isRight ? [0, 0, 0, 40] : [0, 40, 0, 0],
-			},
-			axisLabel: {
-				color: field.color,
-				fontSize: 11,
-				formatter: (val: number) => {
-					if (isPace) return formatPaceDecimal(val);
-					if (Math.abs(val) >= 1000) return val.toFixed(0);
-					if (Math.abs(val) >= 100) return val.toFixed(0);
-					return val.toFixed(1);
-				},
-			},
-			axisLine: { show: true, lineStyle: { color: field.color } },
+			show: false,
 			splitLine: { show: index === 0, lineStyle: { color: '#f0f0f0' } },
 			position: (isRight ? 'right' : 'left') as 'left' | 'right',
-			offset,
 			inverse: !!field.inverted,
 		};
 	}
