@@ -1,3 +1,4 @@
+<!-- fitgrep: explore your Garmin FIT workout data -->
 <script lang="ts">
 	import { store } from '$lib/store.svelte';
 	import UploadZone from './components/UploadZone.svelte';
