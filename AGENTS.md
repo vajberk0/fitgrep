@@ -66,6 +66,8 @@ npm run preview  # Preview production build
 npx svelte-check # Type checking
 ```
 
+**Always commit and push after making changes** — the site is deployed via GitHub Pages from the repo, so changes only go live once pushed.
+
 ## GitHub Pages
 
 Deploy workflow at `.github/workflows/deploy.yml` — builds and deploys via GitHub Actions. Source must be set to "GitHub Actions" in repo Settings → Pages.
