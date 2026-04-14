@@ -52,6 +52,16 @@
 		const enabledInfos = store.enabledFieldInfos;
 		const records = store.data.records;
 
+		// Preserve current zoom across chart rebuilds
+		const currentSelection = store.selectionRange;
+		const totalRecords = records.length;
+		let savedStartPercent = 0;
+		let savedEndPercent = 100;
+		if (currentSelection && totalRecords > 0) {
+			savedStartPercent = (currentSelection.startIndex / totalRecords) * 100;
+			savedEndPercent = (currentSelection.endIndex / totalRecords) * 100;
+		}
+
 		if (records.length === 0 || enabledInfos.length === 0) {
 			chart.setOption({
 				title: {
@@ -149,8 +159,8 @@
 				{
 					type: 'slider',
 					xAxisIndex: 0,
-					start: 0,
-					end: 100,
+					start: savedStartPercent,
+					end: savedEndPercent,
 					height: 30,
 					bottom: 10,
 					borderColor: '#ddd',
@@ -175,14 +185,17 @@
 
 		chart.setOption(option, true);
 
-		// Trigger initial selection (full range)
-		const totalRecords = records.length;
-		store.setSelectionRange({
-			startIndex: 0,
-			endIndex: totalRecords,
-			startElapsed: records[0]?.elapsed ?? 0,
-			endElapsed: records[totalRecords - 1]?.elapsed ?? 0,
-		});
+		// Restore selection range from before rebuild
+		if (currentSelection) {
+			store.setSelectionRange(currentSelection);
+		} else {
+			store.setSelectionRange({
+				startIndex: 0,
+				endIndex: totalRecords,
+				startElapsed: records[0]?.elapsed ?? 0,
+				endElapsed: records[totalRecords - 1]?.elapsed ?? 0,
+			});
+		}
 	});
 
 	function buildYAxis(field: any, index: number) {
