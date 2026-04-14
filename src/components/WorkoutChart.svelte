@@ -77,17 +77,13 @@
 			return;
 		}
 
-		// Build Y-axes: each enabled field gets its own axis
+		// Build Y-axes: each enabled field gets its own axis (all hidden, so no visual clutter)
 		const axisMap = new Map<string, number>();
 		const yAxes: any[] = [];
-		const maxVisibleAxes = Math.min(enabledInfos.length, 4);
 
 		enabledInfos.forEach((field, i) => {
-			const axisIdx = Math.min(i, maxVisibleAxes - 1);
-			axisMap.set(field.key, axisIdx);
-			if (i < maxVisibleAxes) {
-				yAxes.push(buildYAxis(field, i));
-			}
+			axisMap.set(field.key, i);
+			yAxes.push(buildYAxis(field, i));
 		});
 
 		const series = enabledInfos.map((field) => ({
