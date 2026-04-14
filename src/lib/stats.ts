@@ -86,6 +86,18 @@ export function formatPace(mps: number): string {
 }
 
 /**
+ * Format a pace value stored as decimal min/km (e.g. 5.25 → "5:15")
+ */
+export function formatPaceDecimal(decimalMinPerKm: number): string {
+	if (!isFinite(decimalMinPerKm) || decimalMinPerKm <= 0) return '--:--';
+	const totalSeconds = decimalMinPerKm * 60;
+	const min = Math.floor(totalSeconds / 60);
+	const sec = Math.round(totalSeconds % 60);
+	if (sec === 60) return `${min + 1}:00`;
+	return `${min}:${String(sec).padStart(2, '0')}`;
+}
+
+/**
  * Build a summary string
  */
 export function formatSummary(summary: WorkoutSummary): string {

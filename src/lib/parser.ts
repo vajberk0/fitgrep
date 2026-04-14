@@ -66,6 +66,24 @@ export async function parseFitFile(buffer: ArrayBuffer): Promise<WorkoutData> {
 		availableFields[i] = { ...availableFields[i], color: buildFieldInfo(availableFields[i].key, i).color };
 	}
 
+	// Detect if this is a running workout
+	const sportRaw = (session.sport ?? '').toLowerCase();
+	const isRunning = sportRaw.includes('running');
+
+	// Speed field keys that should be converted to pace for running
+	const speedKeys = new Set(['enhanced_speed', 'speed']);
+
+	// If running, update field config for speed fields → pace
+	if (isRunning) {
+		for (const field of availableFields) {
+			if (speedKeys.has(field.key)) {
+				field.label = 'Pace';
+				field.unit = 'min/km';
+				field.inverted = true;
+			}
+		}
+	}
+
 	// Build DataPoint array
 	const dataPoints: DataPoint[] = [];
 	for (const rec of records) {
@@ -83,7 +101,14 @@ export async function parseFitFile(buffer: ArrayBuffer): Promise<WorkoutData> {
 		for (const field of availableFields) {
 			const rawVal = rec[field.key];
 			if (typeof rawVal === 'number' && !isNaN(rawVal)) {
-				dp[field.key] = rawVal * field.scale;
+				let val = rawVal * field.scale;
+				// Convert speed (km/h) to pace (min/km) for running workouts
+				if (isRunning && speedKeys.has(field.key)) {
+					val = val > 0.5 ? 60 / val : NaN; // guard against zero/very low speed
+				}
+				if (!isNaN(val)) {
+					dp[field.key] = val;
+				}
 			}
 		}
 
@@ -129,6 +154,19 @@ export async function parseFitFile(buffer: ArrayBuffer): Promise<WorkoutData> {
 	if (!sessions.length && dataPoints.length > 0) {
 		summary.totalDuration = dataPoints[dataPoints.length - 1].elapsed;
 		summary.totalElapsed = dataPoints[dataPoints.length - 1].elapsed;
+	}
+
+	// Convert summary speed values to pace (min/km) for running workouts
+	if (isRunning) {
+		if (summary.avgSpeed != null && summary.avgSpeed > 0) {
+			summary.avgSpeed = 60 / (summary.avgSpeed * 3.6); // m/s → km/h → min/km
+		}
+		if (summary.maxSpeed != null && summary.maxSpeed > 0) {
+			summary.maxSpeed = 60 / (summary.maxSpeed * 3.6); // m/s → km/h → min/km
+		}
+	} else {
+		if (summary.avgSpeed != null) summary.avgSpeed *= 3.6; // m/s → km/h
+		if (summary.maxSpeed != null) summary.maxSpeed *= 3.6;
 	}
 
 	return {

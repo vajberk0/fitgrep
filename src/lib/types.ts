@@ -13,6 +13,8 @@ export interface FieldInfo {
 	defaultEnabled: boolean;
 	/** Color for chart line */
 	color: string;
+	/** Whether the y-axis should be inverted (e.g. pace: lower value = faster = better) */
+	inverted?: boolean;
 }
 
 export interface DataPoint {

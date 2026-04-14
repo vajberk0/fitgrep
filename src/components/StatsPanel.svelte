@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { store } from '$lib/store.svelte';
-	import { formatElapsed } from '$lib/stats';
-	import type { FieldStats } from '$lib/types';
+	import { formatElapsed, formatPaceDecimal } from '$lib/stats';
+	import type { FieldStats, FieldInfo } from '$lib/types';
 
-	function fmt(val: number): string {
+	function fmt(val: number, field?: FieldInfo): string {
+		if (field?.unit === 'min/km') return formatPaceDecimal(val);
 		if (Math.abs(val) >= 1000) return val.toFixed(0);
 		if (Math.abs(val) >= 100) return val.toFixed(0);
 		if (Math.abs(val) >= 10) return val.toFixed(1);
@@ -47,9 +48,9 @@
 								{/if}
 							</td>
 							{#if stats}
-								<td class="col-min">{fmt(stats.min)}</td>
-								<td class="col-avg">{fmt(stats.avg)}</td>
-								<td class="col-max">{fmt(stats.max)}</td>
+								<td class="col-min">{fmt(stats.min, field)}</td>
+								<td class="col-avg">{fmt(stats.avg, field)}</td>
+								<td class="col-max">{fmt(stats.max, field)}</td>
 							{:else}
 								<td class="col-min">—</td>
 								<td class="col-avg">—</td>

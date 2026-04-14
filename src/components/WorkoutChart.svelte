@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { store } from '$lib/store.svelte';
-	import { formatElapsed } from '$lib/stats';
+	import { formatElapsed, formatPaceDecimal } from '$lib/stats';
 	import type { EChartsType } from 'echarts';
 
 	let chartEl: HTMLDivElement;
@@ -120,10 +120,12 @@
 						const yVal = Array.isArray(p.value) ? p.value[1] : p.value;
 						if (yVal != null) {
 							const field = enabledInfos.find((f) => f.label === p.seriesName);
+							const isPace = field?.unit === 'min/km';
+							const displayVal = isPace ? formatPaceDecimal(yVal) : yVal.toFixed(1);
 							const unit = field?.unit ? ` ${field.unit}` : '';
 							html += `<div style="display:flex;align-items:center;gap:6px">
 								<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color}"></span>
-								${p.seriesName}: <strong>${yVal.toFixed(1)}${unit}</strong>
+								${p.seriesName}: <strong>${displayVal}${unit}</strong>
 							</div>`;
 						}
 					}
@@ -186,6 +188,7 @@
 	function buildYAxis(field: any, index: number) {
 		const isRight = index % 2 === 1;
 		const offset = Math.floor(index / 2) * 55;
+		const isPace = field.unit === 'min/km';
 		return {
 			type: 'value' as const,
 			name: `${field.label}${field.unit ? ` (${field.unit})` : ''}`,
@@ -198,6 +201,7 @@
 				color: field.color,
 				fontSize: 11,
 				formatter: (val: number) => {
+					if (isPace) return formatPaceDecimal(val);
 					if (Math.abs(val) >= 1000) return val.toFixed(0);
 					if (Math.abs(val) >= 100) return val.toFixed(0);
 					return val.toFixed(1);
@@ -207,6 +211,7 @@
 			splitLine: { show: index === 0, lineStyle: { color: '#f0f0f0' } },
 			position: (isRight ? 'right' : 'left') as 'left' | 'right',
 			offset,
+			inverse: !!field.inverted,
 		};
 	}
 </script>
