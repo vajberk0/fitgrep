@@ -1,0 +1,250 @@
+<script lang="ts">
+	import { onMount } from 'svelte';
+	import { store } from '$lib/store.svelte';
+	import { formatElapsed } from '$lib/stats';
+	import type { EChartsType } from 'echarts';
+
+	let chartEl: HTMLDivElement;
+	let chart: EChartsType | null = $state(null);
+	let resizeObserver: ResizeObserver | null = null;
+	let chartReady = $state(false);
+
+	onMount(async () => {
+		const echarts = await import('echarts');
+		chart = echarts.init(chartEl, undefined, { renderer: 'canvas' });
+		chartReady = true;
+		resizeObserver = new ResizeObserver(() => chart?.resize());
+		resizeObserver.observe(chartEl);
+
+		chart.on('datazoom', () => {
+			if (!store.data || !chart) return;
+			const option = chart.getOption() as any;
+			const dz = option.dataZoom as any[];
+			if (!dz || dz.length === 0) return;
+
+			const sliderDz = dz.find((d: any) => d.type === 'slider') ?? dz[0];
+			const start = sliderDz.start ?? 0;
+			const end = sliderDz.end ?? 100;
+
+			const records = store.data.records;
+			const totalRecords = records.length;
+			const startIdx = Math.floor((start / 100) * totalRecords);
+			const endIdx = Math.ceil((end / 100) * totalRecords);
+
+			store.setSelectionRange({
+				startIndex: startIdx,
+				endIndex: endIdx,
+				startElapsed: records[startIdx]?.elapsed ?? 0,
+				endElapsed: records[Math.min(endIdx - 1, totalRecords - 1)]?.elapsed ?? 0,
+			});
+		});
+
+		return () => {
+			resizeObserver?.disconnect();
+			chart?.dispose();
+		};
+	});
+
+	// Reactive chart update
+	$effect(() => {
+		if (!chart || !store.data || !chartReady) return;
+
+		const enabledInfos = store.enabledFieldInfos;
+		const records = store.data.records;
+
+		if (records.length === 0 || enabledInfos.length === 0) {
+			chart.setOption({
+				title: {
+					text: enabledInfos.length === 0 ? 'Select metrics above to view chart' : 'No data points',
+					left: 'center',
+					top: 'center',
+					textStyle: { color: '#999', fontSize: 14, fontWeight: 'normal' },
+				},
+				xAxis: { show: false },
+				yAxis: { show: false },
+				series: [],
+			}, true);
+			return;
+		}
+
+		const xData = records.map((r) => r.elapsed);
+
+		// Build Y-axes: each enabled field gets its own axis
+		const axisMap = new Map<string, number>();
+		const yAxes: any[] = [];
+		const maxVisibleAxes = Math.min(enabledInfos.length, 4);
+
+		enabledInfos.forEach((field, i) => {
+			const axisIdx = Math.min(i, maxVisibleAxes - 1);
+			axisMap.set(field.key, axisIdx);
+			if (i < maxVisibleAxes) {
+				yAxes.push(buildYAxis(field, i));
+			}
+		});
+
+		const series = enabledInfos.map((field) => ({
+			name: field.label,
+			type: 'line' as const,
+			data: records.map((r) => r[field.key] ?? null),
+			yAxisIndex: axisMap.get(field.key) ?? 0,
+			symbol: 'none',
+			sampling: 'lttb' as const,
+			lineStyle: { width: 2, color: field.color },
+			itemStyle: { color: field.color },
+			emphasis: {
+				lineStyle: { width: 3 },
+			},
+			connectNulls: true,
+		}));
+
+		const leftAxes = yAxes.filter((a) => a.position === 'left').length;
+		const rightAxes = yAxes.filter((a) => a.position === 'right').length;
+
+		const option: any = {
+			animation: false,
+			grid: {
+				left: 60 + leftAxes * 55,
+				right: 30 + rightAxes * 55,
+				top: 30,
+				bottom: 80,
+			},
+			tooltip: {
+				trigger: 'axis',
+				axisPointer: { type: 'cross', snap: true },
+				formatter: (params: any[]) => {
+					if (!params || params.length === 0) return '';
+					const elapsed = params[0].axisValue;
+					let html = `<div style="font-weight:600;margin-bottom:4px">${formatElapsed(elapsed)}</div>`;
+					for (const p of params) {
+						if (p.value != null) {
+							const field = enabledInfos.find((f) => f.label === p.seriesName);
+							const unit = field?.unit ? ` ${field.unit}` : '';
+							html += `<div style="display:flex;align-items:center;gap:6px">
+								<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color}"></span>
+								${p.seriesName}: <strong>${p.value.toFixed(1)}${unit}</strong>
+							</div>`;
+						}
+					}
+					return html;
+				},
+			},
+			xAxis: {
+				type: 'value',
+				data: xData,
+				name: 'Time',
+				nameLocation: 'center',
+				nameGap: 30,
+				axisLabel: {
+					formatter: (val: number) => formatElapsed(val),
+					fontSize: 11,
+				},
+				axisLine: { lineStyle: { color: '#ccc' } },
+			},
+			yAxis: yAxes,
+			series,
+			dataZoom: [
+				{
+					type: 'slider',
+					xAxisIndex: 0,
+					start: 0,
+					end: 100,
+					height: 30,
+					bottom: 10,
+					borderColor: '#ddd',
+					fillerColor: 'rgba(52, 152, 219, 0.15)',
+					handleStyle: { color: '#3498db', borderColor: '#3498db' },
+					dataBackground: {
+						lineStyle: { color: '#ccc' },
+						areaStyle: { color: '#eee' },
+					},
+					selectedDataBackground: {
+						lineStyle: { color: '#3498db' },
+						areaStyle: { color: 'rgba(52, 152, 219, 0.1)' },
+					},
+					labelFormatter: (val: number) => formatElapsed(val),
+				},
+				{
+					type: 'inside',
+					xAxisIndex: 0,
+				},
+			],
+		};
+
+		chart.setOption(option, true);
+
+		// Trigger initial selection (full range)
+		const totalRecords = records.length;
+		store.setSelectionRange({
+			startIndex: 0,
+			endIndex: totalRecords,
+			startElapsed: records[0]?.elapsed ?? 0,
+			endElapsed: records[totalRecords - 1]?.elapsed ?? 0,
+		});
+	});
+
+	function buildYAxis(field: any, index: number) {
+		const isRight = index % 2 === 1;
+		const offset = Math.floor(index / 2) * 55;
+		return {
+			type: 'value' as const,
+			name: `${field.label}${field.unit ? ` (${field.unit})` : ''}`,
+			nameTextStyle: {
+				color: field.color,
+				fontSize: 11,
+				padding: isRight ? [0, 0, 0, 40] : [0, 40, 0, 0],
+			},
+			axisLabel: {
+				color: field.color,
+				fontSize: 11,
+				formatter: (val: number) => {
+					if (Math.abs(val) >= 1000) return val.toFixed(0);
+					if (Math.abs(val) >= 100) return val.toFixed(0);
+					return val.toFixed(1);
+				},
+			},
+			axisLine: { show: true, lineStyle: { color: field.color } },
+			splitLine: { show: index === 0, lineStyle: { color: '#f0f0f0' } },
+			position: (isRight ? 'right' : 'left') as 'left' | 'right',
+			offset,
+		};
+	}
+</script>
+
+<div class="chart-container">
+	{#if !chartReady}
+		<div class="chart-loading">Loading chart…</div>
+	{/if}
+	<div bind:this={chartEl} class="chart-el"></div>
+</div>
+
+<style>
+	.chart-container {
+		width: 100%;
+		background: var(--surface);
+		border-radius: 12px;
+		border: 1px solid var(--border-color);
+		overflow: hidden;
+		position: relative;
+	}
+
+	.chart-loading {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		color: var(--text-muted);
+		font-size: 0.9rem;
+		z-index: 1;
+	}
+
+	.chart-el {
+		width: 100%;
+		height: 420px;
+	}
+
+	@media (max-width: 768px) {
+		.chart-el {
+			height: 300px;
+		}
+	}
+</style>
