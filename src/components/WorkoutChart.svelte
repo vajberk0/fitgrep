@@ -67,8 +67,6 @@
 			return;
 		}
 
-		const xData = records.map((r) => r.elapsed);
-
 		// Build Y-axes: each enabled field gets its own axis
 		const axisMap = new Map<string, number>();
 		const yAxes: any[] = [];
@@ -85,7 +83,10 @@
 		const series = enabledInfos.map((field) => ({
 			name: field.label,
 			type: 'line' as const,
-			data: records.map((r) => r[field.key] ?? null),
+			data: records.map((r) => {
+				const val = r[field.key];
+				return val != null ? [r.elapsed, val] : [r.elapsed, null];
+			}),
 			yAxisIndex: axisMap.get(field.key) ?? 0,
 			symbol: 'none',
 			sampling: 'lttb' as const,
@@ -94,7 +95,7 @@
 			emphasis: {
 				lineStyle: { width: 3 },
 			},
-			connectNulls: true,
+			connectNulls: false,
 		}));
 
 		const leftAxes = yAxes.filter((a) => a.position === 'left').length;
@@ -116,12 +117,13 @@
 					const elapsed = params[0].axisValue;
 					let html = `<div style="font-weight:600;margin-bottom:4px">${formatElapsed(elapsed)}</div>`;
 					for (const p of params) {
-						if (p.value != null) {
+						const yVal = Array.isArray(p.value) ? p.value[1] : p.value;
+						if (yVal != null) {
 							const field = enabledInfos.find((f) => f.label === p.seriesName);
 							const unit = field?.unit ? ` ${field.unit}` : '';
 							html += `<div style="display:flex;align-items:center;gap:6px">
 								<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color}"></span>
-								${p.seriesName}: <strong>${p.value.toFixed(1)}${unit}</strong>
+								${p.seriesName}: <strong>${yVal.toFixed(1)}${unit}</strong>
 							</div>`;
 						}
 					}
@@ -130,7 +132,6 @@
 			},
 			xAxis: {
 				type: 'value',
-				data: xData,
 				name: 'Time',
 				nameLocation: 'center',
 				nameGap: 30,
