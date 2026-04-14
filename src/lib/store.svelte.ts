@@ -1,5 +1,6 @@
 import type { WorkoutData, FieldInfo, SelectionRange, FieldStats } from './types';
 import { calcFieldStats } from './stats';
+import { getStoredFiles, type StoredFileMeta } from './storage';
 
 // ─── Reactive State ───────────────────────────────────────────────────────
 // Svelte 5 runes-based store using module-level $state
@@ -9,6 +10,7 @@ let enabledFields = $state<string[]>([]); // field keys
 let selectionRange = $state<SelectionRange | null>(null);
 let isLoading = $state(false);
 let errorMessage = $state<string | null>(null);
+let storedFiles = $state<StoredFileMeta[]>([]);
 
 // ─── Derived State ────────────────────────────────────────────────────────
 
@@ -72,6 +74,13 @@ function setError(msg: string | null) {
 	errorMessage = msg;
 }
 
+function refreshStoredFiles() {
+	storedFiles = getStoredFiles();
+}
+
+// Initialize stored files from localStorage
+storedFiles = getStoredFiles();
+
 // ─── Export as object for reactivity ──────────────────────────────────────
 
 export const store = {
@@ -83,10 +92,12 @@ export const store = {
 	get enabledFieldInfos() { return getEnabledFieldInfos(); },
 	get selectionStats() { return getSelectionStats(); },
 	get selectionDuration() { return getSelectionDuration(); },
+	get storedFiles() { return storedFiles; },
 
 	setWorkoutData,
 	toggleField,
 	setSelectionRange,
 	setLoading,
 	setError,
+	refreshStoredFiles,
 };

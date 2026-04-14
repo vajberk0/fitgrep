@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { store } from '$lib/store.svelte';
+	import { saveFile } from '$lib/storage';
 
 	let dragging = $state(false);
 	let inputEl: HTMLInputElement;
@@ -43,6 +44,11 @@
 			const buffer = await file.arrayBuffer();
 			const { parseFitFile } = await import('$lib/parser');
 			const data = await parseFitFile(buffer);
+
+			// Save to localStorage (overwrites if same filename)
+			saveFile(file.name, buffer, data.summary);
+			store.refreshStoredFiles();
+
 			store.setWorkoutData(data);
 		} catch (err: any) {
 			console.error('FIT parse error:', err);

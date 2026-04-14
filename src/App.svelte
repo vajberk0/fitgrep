@@ -8,6 +8,7 @@
 	import WorkoutChart from './components/WorkoutChart.svelte';
 	import StatsPanel from './components/StatsPanel.svelte';
 	import GpsMap from './components/GpsMap.svelte';
+	import StoredFiles from './components/StoredFiles.svelte';
 
 	function handleNewFile() {
 		store.setWorkoutData(null);
@@ -36,7 +37,17 @@
 
 	{#if !store.data}
 		<section class="upload-section">
-			<UploadZone />
+			<div class="upload-layout">
+				<StoredFiles />
+				<div class="upload-divider">
+					{#if store.storedFiles.length > 0}
+						<div class="divider-line"></div>
+						<span class="divider-text">or</span>
+						<div class="divider-line"></div>
+					{/if}
+				</div>
+				<UploadZone />
+			</div>
 		</section>
 	{:else}
 		<section class="workout-section">
@@ -109,6 +120,36 @@
 		justify-content: center;
 		align-items: center;
 		min-height: 60vh;
+	}
+
+	.upload-layout {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1.25rem;
+		width: 100%;
+		max-width: 520px;
+	}
+
+	.upload-divider {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		width: 100%;
+	}
+
+	.divider-line {
+		flex: 1;
+		height: 1px;
+		background: var(--border-color);
+	}
+
+	.divider-text {
+		font-size: 0.8rem;
+		color: var(--text-muted);
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
 	}
 
 	.workout-section {
