@@ -66,6 +66,9 @@ export async function parseFitFile(buffer: ArrayBuffer): Promise<WorkoutData> {
 		availableFields[i] = { ...availableFields[i], color: buildFieldInfo(availableFields[i].key, i).color };
 	}
 
+	// Build summary from session message (need session early for sport detection)
+	const session = sessions[0] ?? ({} as any);
+
 	// Detect if this is a running workout
 	const sportRaw = (session.sport ?? '').toLowerCase();
 	const isRunning = sportRaw.includes('running');
@@ -129,7 +132,6 @@ export async function parseFitFile(buffer: ArrayBuffer): Promise<WorkoutData> {
 	}
 
 	// Build summary from session message
-	const session = sessions[0] ?? ({} as any);
 	const summary: WorkoutSummary = {
 		sport: capitalize(session.sport ?? 'Unknown'),
 		subSport: capitalize(session.sub_sport ?? ''),
