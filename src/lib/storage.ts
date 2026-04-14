@@ -43,11 +43,9 @@ export function getStoredFiles(): StoredFileMeta[] {
 }
 
 function isDuplicate(a: StoredFileMeta, b: StoredFileMeta): boolean {
-	if (a.filename === b.filename) return true;
-	// Same start time (within 1 minute) and same distance (within 100m) → same workout
+	const nameMatch = a.filename === b.filename;
 	const timeMatch = Math.abs(new Date(a.startTime).getTime() - new Date(b.startTime).getTime()) < 60_000;
-	const distMatch = Math.abs(a.totalDistance - b.totalDistance) < 100;
-	return timeMatch && distMatch;
+	return nameMatch && timeMatch;
 }
 
 export function saveFile(filename: string, buffer: ArrayBuffer, summary: WorkoutSummary): void {
