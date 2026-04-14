@@ -137,6 +137,8 @@
 				name: 'Time',
 				nameLocation: 'center',
 				nameGap: 30,
+				min: 'dataMin',
+				max: 'dataMax',
 				axisLabel: {
 					formatter: (val: number) => formatElapsed(val),
 					fontSize: 11,
