@@ -42,12 +42,16 @@ export function getStoredFiles(): StoredFileMeta[] {
 	}
 }
 
-export function saveFile(filename: string, buffer: ArrayBuffer, summary: WorkoutSummary): void {
-	// Save file data
-	const base64 = arrayBufferToBase64(buffer);
-	localStorage.setItem(FILE_PREFIX + filename, base64);
+function isDuplicate(a: StoredFileMeta, b: StoredFileMeta): boolean {
+	if (a.filename === b.filename) return true;
+	// Same start time (within 1 minute) and same distance (within 100m) → same workout
+	const timeMatch = Math.abs(new Date(a.startTime).getTime() - new Date(b.startTime).getTime()) < 60_000;
+	const distMatch = Math.abs(a.totalDistance - b.totalDistance) < 100;
+	return timeMatch && distMatch;
+}
 
-	// Update metadata list (deduplicate by filename)
+export function saveFile(filename: string, buffer: ArrayBuffer, summary: WorkoutSummary): void {
+	const base64 = arrayBufferToBase64(buffer);
 	const files = getStoredFiles();
 	const meta: StoredFileMeta = {
 		filename,
@@ -58,14 +62,19 @@ export function saveFile(filename: string, buffer: ArrayBuffer, summary: Workout
 		savedAt: new Date().toISOString(),
 	};
 
-	const idx = files.findIndex((f) => f.filename === filename);
-	if (idx >= 0) {
-		// Remove old data if filename changed (shouldn't happen, but safe)
-		files[idx] = meta;
-	} else {
-		files.unshift(meta); // newest first
+	const dupIdx = files.findIndex((f) => isDuplicate(f, meta));
+	if (dupIdx >= 0) {
+		const old = files[dupIdx];
+		// Remove old file data if filename changed
+		if (old.filename !== filename) {
+			localStorage.removeItem(FILE_PREFIX + old.filename);
+		}
+		files.splice(dupIdx, 1);
 	}
 
+	// Save new file data and meta
+	localStorage.setItem(FILE_PREFIX + filename, base64);
+	files.unshift(meta); // newest first
 	localStorage.setItem(META_KEY, JSON.stringify(files));
 }
 
