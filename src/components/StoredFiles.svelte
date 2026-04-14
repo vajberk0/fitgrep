@@ -14,7 +14,7 @@
 			}
 			const { parseFitFile } = await import('$lib/parser');
 			const data = await parseFitFile(buffer);
-			store.setWorkoutData(data);
+			store.setWorkoutData(data, meta.filename);
 		} catch (err: any) {
 			console.error('Error loading stored file:', err);
 			store.setError('Could not load stored file. It may be corrupted.');

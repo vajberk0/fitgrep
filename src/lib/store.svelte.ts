@@ -1,6 +1,7 @@
 import type { WorkoutData, FieldInfo, SelectionRange, FieldStats } from './types';
 import { calcFieldStats } from './stats';
 import { getStoredFiles, type StoredFileMeta } from './storage';
+import { saveFieldPreferences, loadFieldPreferences, saveLastFile, clearLastFile } from './preferences';
 
 // ─── Reactive State ───────────────────────────────────────────────────────
 // Svelte 5 runes-based store using module-level $state
@@ -43,13 +44,27 @@ function getSelectionDuration(): number {
 
 // ─── Actions ──────────────────────────────────────────────────────────────
 
-function setWorkoutData(data: WorkoutData | null) {
+function setWorkoutData(data: WorkoutData | null, filename?: string) {
 	workoutData = data;
 	if (data) {
-		// Enable all default-enabled fields
-		enabledFields = data.availableFields.filter((f) => f.defaultEnabled).map((f) => f.key);
+		// Apply saved field preferences if available, otherwise use defaults
+		const saved = loadFieldPreferences();
+		if (saved) {
+			const availableKeys = new Set(data.availableFields.map((f) => f.key));
+			// Only keep saved fields that actually exist in this workout
+			const restored = saved.filter((k) => availableKeys.has(k));
+			if (restored.length > 0) {
+				enabledFields = restored;
+			} else {
+				enabledFields = data.availableFields.filter((f) => f.defaultEnabled).map((f) => f.key);
+			}
+		} else {
+			enabledFields = data.availableFields.filter((f) => f.defaultEnabled).map((f) => f.key);
+		}
+		if (filename) saveLastFile(filename);
 	} else {
 		enabledFields = [];
+		clearLastFile();
 	}
 	selectionRange = null;
 }
@@ -60,6 +75,7 @@ function toggleField(key: string) {
 	} else {
 		enabledFields = [...enabledFields, key];
 	}
+	saveFieldPreferences(enabledFields);
 }
 
 function setSelectionRange(range: SelectionRange | null) {

@@ -49,7 +49,7 @@
 			saveFile(file.name, buffer, data.summary);
 			store.refreshStoredFiles();
 
-			store.setWorkoutData(data);
+			store.setWorkoutData(data, file.name);
 		} catch (err: any) {
 			console.error('FIT parse error:', err);
 			const msg = err?.message ?? 'Could not read this workout file';

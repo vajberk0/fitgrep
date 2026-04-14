@@ -1,6 +1,9 @@
 <!-- fitgrep: explore your Garmin FIT workout data -->
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { store } from '$lib/store.svelte';
+	import { loadLastFile } from '$lib/preferences';
+	import { loadFileBuffer } from '$lib/storage';
 	import UploadZone from './components/UploadZone.svelte';
 	import ErrorBar from './components/ErrorBar.svelte';
 	import WorkoutSummary from './components/WorkoutSummary.svelte';
@@ -13,6 +16,27 @@
 	function handleNewFile() {
 		store.setWorkoutData(null);
 	}
+
+	// Auto-load last viewed file on mount
+	onMount(async () => {
+		const lastFile = loadLastFile();
+		if (!lastFile) return;
+
+		const buffer = loadFileBuffer(lastFile);
+		if (!buffer) return; // file was deleted from storage
+
+		store.setLoading(true);
+		try {
+			const { parseFitFile } = await import('$lib/parser');
+			const data = await parseFitFile(buffer);
+			store.setWorkoutData(data, lastFile);
+		} catch (err) {
+			console.warn('Auto-load failed:', err);
+			// Non-critical — just show the upload screen
+		} finally {
+			store.setLoading(false);
+		}
+	});
 </script>
 
 <main class="app">
