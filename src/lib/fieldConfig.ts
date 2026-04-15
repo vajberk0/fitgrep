@@ -27,23 +27,20 @@ export const FIELD_CONFIG: Record<string, Partial<FieldInfo>> = {
 	resistance: { label: 'Resistance', unit: '', scale: 1, defaultEnabled: false },
 };
 
-/** Color palette for chart series */
+/** Color palette for non-reserved fields (no red/blue/gray — those are reserved for HR/speed/altitude) */
 export const SERIES_COLORS = [
-	'#e74c3c', // red - heart rate
-	'#3498db', // blue - speed
 	'#2ecc71', // green - cadence
-	'#f39c12', // orange - altitude
+	'#f39c12', // orange
 	'#9b59b6', // purple - power
 	'#1abc9c', // teal - temperature
 	'#e67e22', // dark orange
-	'#34495e', // dark blue-grey
-	'#16a085', // dark teal
-	'#c0392b', // dark red
-	'#2980b9', // dark blue
 	'#8e44ad', // dark purple
 	'#27ae60', // dark green
 	'#d35400', // pumpkin
-	'#7f8c8d', // grey
+	'#16a085', // dark teal
+	'#f1c40f', // yellow
+	'#e91e63', // pink
+	'#00bcd4', // cyan
 ];
 
 /** Fields to exclude from chart display (non-numeric, metadata, or redundant) */
