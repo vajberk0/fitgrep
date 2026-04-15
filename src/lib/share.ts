@@ -29,6 +29,25 @@ export interface ShareResult {
 	id: string;
 }
 
+// ── Upload cache ──────────────────────────────────────────────────────────
+
+// Cache file fingerprint → share ID so we don't re-upload the same file
+const shareCache = new Map<string, { id: string }>();
+
+/** Cheap fingerprint: length + sampled bytes → fast hash. */
+function fileFingerprint(buffer: ArrayBuffer): string {
+	const bytes = new Uint8Array(buffer);
+	const len = bytes.length;
+	let h = len;
+	// Sample first 4KB
+	const headEnd = Math.min(4096, len);
+	for (let i = 0; i < headEnd; i++) h = ((h << 5) - h + bytes[i]) | 0;
+	// Sample last 4KB
+	const tailStart = Math.max(0, len - 4096);
+	for (let i = tailStart; i < len; i++) h = ((h << 5) - h + bytes[i]) | 0;
+	return `${len}-${h >>> 0}`;
+}
+
 // ── Encoding helpers ──────────────────────────────────────────────────────
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -67,31 +86,37 @@ export async function shareWorkout(
 	fields: string[],
 	selection?: { startElapsed: number; endElapsed: number } | null,
 ): Promise<ShareResult> {
-	const payload: SharePayload = {
-		v: 1,
-		filename,
-		fields,
-		file: arrayBufferToBase64(buffer),
-	};
+	const fp = fileFingerprint(buffer);
+	let id = shareCache.get(fp)?.id;
 
-	const res = await fetch(`${SHARE_API}/share`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(payload),
-	});
+	if (!id) {
+		// Upload only if we haven't seen this file before
+		const payload: SharePayload = {
+			v: 1,
+			filename,
+			fields,
+			file: arrayBufferToBase64(buffer),
+		};
 
-	if (!res.ok) {
-		const err = await res.json().catch(() => ({ error: 'Upload failed' }));
-		throw new Error((err as any).error || `Upload failed (${res.status})`);
+		const res = await fetch(`${SHARE_API}/share`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(payload),
+		});
+
+		if (!res.ok) {
+			const err = await res.json().catch(() => ({ error: 'Upload failed' }));
+			throw new Error((err as any).error || `Upload failed (${res.status})`);
+		}
+
+		({ id } = (await res.json()) as { id: string });
+		shareCache.set(fp, { id });
 	}
 
-	const { id } = (await res.json()) as { id: string };
-
-	// Build share URL pointing to the fitgrep app with ?s=ID param
+	// Build share URL — selection is always fresh since it's just a URL param
 	const base = window.location.origin + window.location.pathname;
 	let url = `${base}?s=${id}`;
 
-	// Append selection range if present (elapsed seconds: &t=<start>-<end>)
 	if (selection) {
 		url += `&t=${Math.round(selection.startElapsed)}-${Math.round(selection.endElapsed)}`;
 	}
