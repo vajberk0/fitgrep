@@ -57,9 +57,14 @@
 			copied = true;
 			setTimeout(() => { copied = false; }, 2000);
 		} catch {
-			// Fallback: select the input text
+			// Fallback for insecure contexts or older browsers
 			const input = document.querySelector('.share-link-input') as HTMLInputElement;
-			input?.select();
+			if (input) {
+				input.select();
+				document.execCommand('copy');
+				copied = true;
+				setTimeout(() => { copied = false; }, 2000);
+			}
 		}
 	}
 
