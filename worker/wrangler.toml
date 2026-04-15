@@ -5,14 +5,15 @@ compatibility_date = "2025-04-15"
 # ── R2 bucket binding ──────────────────────────────────────────────────────
 # Create the bucket first:  wrangler r2 bucket create fitgrep-shares
 [[r2_buckets]]
-binding = "BUCKET"
 bucket_name = "fitgrep-shares"
+binding = "fitgrep_shares"
+
 
 # ── Environment variables ─────────────────────────────────────────────────
 # Set CORS_ORIGIN to your fitgrep domain (e.g. "https://fitgrep.app")
 # For local dev it defaults to "*", but lock it down for production:
 [vars]
-CORS_ORIGIN = "*"
+CORS_ORIGIN = "http://fitgrep.je.mk"
 
 # ── Routes (uncomment and edit for production) ──────────────────────────────
 # [[routes]]
