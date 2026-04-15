@@ -8,7 +8,7 @@ Single-page web app that lets athletes upload Garmin .FIT workout files and expl
 
 - **Framework**: Svelte 5 + TypeScript (runes-based reactivity with `$state`)
 - **Build**: Vite
-- **FIT Parsing**: `fit-file-parser` (NOT `@garmin/fitsdk` — that one has a stream-based API unsuitable for browser use)
+- **FIT Parsing**: `fit-file-parser` (NOT `@garmin/fitsdk` — that one has a stream-based API unsuitable for browser use). **Patched** with `patch-package` to add undocumented Garmin record fields (see below).
 - **Charts**: Apache ECharts v5 (lazy-loaded)
 - **Maps**: Leaflet + OpenStreetMap (lazy-loaded)
 - **Styling**: CSS variables + Svelte scoped styles
@@ -49,6 +49,8 @@ src/
 5. **Scale conversion** happens at parse time in `parser.ts` (e.g., speed ×3.6 for km/h). Chart and stats work with already-converted values.
 
 ## Important Gotchas
+
+- **fit-file-parser patch**: The library silently drops Garmin record fields it doesn't recognize (undocumented in the FIT SDK). We use `patch-package` (`patches/fit-file-parser+2.3.3.patch`) to add field definitions for: field 108 (respiration_rate, uint16, scale 100), field 136 (wrist_heart_rate, uint16), field 144 (external_heart_rate, uint8). The patch runs on `npm install` via the `postinstall` script. If you ever update `fit-file-parser`, check the patch still applies.
 
 - `parseFitFile()` is **async** (returns Promise) — always `await` it
 - `bind:this` variables (like chart/map containers) trigger Svelte warnings about `$state` — these are false positives, don't add `$state` to them

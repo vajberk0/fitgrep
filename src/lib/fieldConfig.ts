@@ -25,6 +25,9 @@ export const FIELD_CONFIG: Record<string, Partial<FieldInfo>> = {
 	fractional_cadence: { label: 'Fractional Cadence', unit: '', scale: 1, defaultEnabled: false },
 	grade: { label: 'Grade', unit: '%', scale: 1, defaultEnabled: false },
 	resistance: { label: 'Resistance', unit: '', scale: 1, defaultEnabled: false },
+	external_heart_rate: { label: 'External HR', unit: 'bpm', scale: 1, defaultEnabled: true, color: '#ff6b6b' },
+	wrist_heart_rate: { label: 'Wrist HR', unit: 'bpm', scale: 1, defaultEnabled: true, color: '#ffa07a' },
+	respiration_rate: { label: 'Respiration Rate', unit: 'brpm', scale: 1, defaultEnabled: false },
 };
 
 /** Color palette for non-reserved fields (no red/blue/gray — those are reserved for HR/speed/altitude) */

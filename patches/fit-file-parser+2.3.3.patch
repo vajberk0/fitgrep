@@ -1,0 +1,66 @@
+diff --git a/node_modules/fit-file-parser/dist/cjs/fit.js b/node_modules/fit-file-parser/dist/cjs/fit.js
+index 8cc0af9..8e65d5f 100644
+--- a/node_modules/fit-file-parser/dist/cjs/fit.js
++++ b/node_modules/fit-file-parser/dist/cjs/fit.js
+@@ -3004,6 +3004,28 @@ exports.FIT = {
+                 offset: 0,
+                 units: 'percent',
+             },
++            // Undocumented Garmin fields (not in FIT SDK Profile.xlsx)
++            108: {
++                field: 'respiration_rate',
++                type: 'uint16',
++                scale: 100,
++                offset: 0,
++                units: 'brpm',
++            },
++            136: {
++                field: 'wrist_heart_rate',
++                type: 'uint16',
++                scale: null,
++                offset: 0,
++                units: 'bpm',
++            },
++            144: {
++                field: 'external_heart_rate',
++                type: 'uint8',
++                scale: null,
++                offset: 0,
++                units: 'bpm',
++            },
+         },
+         285: {
+             name: 'jump',
+diff --git a/node_modules/fit-file-parser/dist/fit.js b/node_modules/fit-file-parser/dist/fit.js
+index 3dc908d..828d74c 100644
+--- a/node_modules/fit-file-parser/dist/fit.js
++++ b/node_modules/fit-file-parser/dist/fit.js
+@@ -3001,6 +3001,28 @@ export const FIT = {
+                 offset: 0,
+                 units: 'percent',
+             },
++            // Undocumented Garmin fields (not in FIT SDK Profile.xlsx)
++            108: {
++                field: 'respiration_rate',
++                type: 'uint16',
++                scale: 100,
++                offset: 0,
++                units: 'brpm',
++            },
++            136: {
++                field: 'wrist_heart_rate',
++                type: 'uint16',
++                scale: null,
++                offset: 0,
++                units: 'bpm',
++            },
++            144: {
++                field: 'external_heart_rate',
++                type: 'uint8',
++                scale: null,
++                offset: 0,
++                units: 'bpm',
++            },
+         },
+         285: {
+             name: 'jump',
