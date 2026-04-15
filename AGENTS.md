@@ -25,9 +25,12 @@ src/
 │   ├── fieldConfig.ts           # FIT field → label/unit/scale/color mapping (snake_case keys!)
 │   ├── parser.ts                # FIT file → WorkoutData (async, returns Promise)
 │   ├── stats.ts                 # MIN/AVG/MAX calc, formatting utilities
-│   └── store.svelte.ts          # Svelte 5 reactive store (module-level $state + getter fns)
+│   ├── store.svelte.ts          # Svelte 5 reactive store (module-level $state + getter fns)
+│   ├── storage.ts               # LocalStorage persistence for uploaded FIT files
+│   └── preferences.ts           # Cookie/localStorage for field preferences & last viewed file
 └── components/
     ├── UploadZone.svelte        # Drag & drop + file input, calls parser via dynamic import
+    ├── StoredFiles.svelte       # Lists previously uploaded workouts from local storage
     ├── ErrorBar.svelte          # Dismissable error notifications
     ├── FieldSelector.svelte     # Toggleable chips for discovered metrics
     ├── WorkoutChart.svelte      # ECharts multi-series chart with dataZoom slider
@@ -42,7 +45,7 @@ src/
 
 2. **Store pattern** — `store.svelte.ts` uses Svelte 5 `$state` runes at module level, exported as an object with getters. This gives fine-grained reactivity without a context provider.
 
-3. **Lazy loading** — ECharts, Leaflet, and the parser are all dynamically imported to keep the initial bundle small (~56KB main chunk).
+3. **Lazy loading** — ECharts, Leaflet, and the parser are all dynamically imported to keep the initial bundle small (~62KB main chunk).
 
 4. **Data-agnostic** — Fields are discovered at parse time from FIT record messages. Unknown fields get humanized labels and are disabled by default.
 
@@ -57,7 +60,7 @@ src/
 - ECharts `dataZoom` event fires frequently; store updates are synchronous so no throttling needed
 - GPS track ↔ record index mapping is approximate (fractional), not 1:1
 - FIT files store position as degrees (parser handles conversion from semicircles)
-- Sample files in repo root: `2024-11-25.fit` (8km run, power data), `2025-03-05.fit` (5.6km run, running dynamics)
+- Sample files in repo root: `externalHR.fit`
 
 ## Commands
 
@@ -81,5 +84,4 @@ Deploy workflow at `.github/workflows/deploy.yml` — builds and deploys via Git
 - Lap-by-lap analysis
 - Pace zones / HR zones overlay
 - Dark/light theme toggle
-- Local storage for recent workouts
 - Direct brush selection on chart area (not just slider)
