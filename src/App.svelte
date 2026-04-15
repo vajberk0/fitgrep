@@ -4,7 +4,7 @@
 	import { store } from '$lib/store.svelte';
 	import { loadLastFile } from '$lib/preferences';
 	import { loadFileBuffer, saveFile } from '$lib/storage';
-	import { getShareIdFromUrl, loadSharedWorkout, cleanShareUrl } from '$lib/share';
+	import { getShareIdFromUrl, loadSharedWorkout, cleanShareUrl, getSelectionFromUrl } from '$lib/share';
 	import UploadZone from './components/UploadZone.svelte';
 	import ErrorBar from './components/ErrorBar.svelte';
 	import WorkoutSummary from './components/WorkoutSummary.svelte';
@@ -17,6 +17,20 @@
 
 	function handleNewFile() {
 		store.setWorkoutData(null);
+	}
+
+	/** Find the record index closest to a given elapsed time. */
+	function findClosestIndex(records: { elapsed: number }[], target: number, upperBound = false): number {
+		if (records.length === 0) return 0;
+		let lo = 0, hi = records.length - 1;
+		while (lo < hi) {
+			const mid = (lo + hi) >> 1;
+			if (records[mid].elapsed < target) lo = mid + 1;
+			else hi = mid;
+		}
+		// For end index, we want the first index past the target (exclusive end)
+		if (upperBound && lo < records.length - 1 && records[lo].elapsed < target) lo++;
+		return lo;
 	}
 
 	// Auto-load shared workout or last viewed file on mount
@@ -42,7 +56,21 @@
 						store.setEnabledFields(shared.fields);
 					}
 
-					// Clean ?s= from URL so refresh doesn't re-fetch
+					// Apply shared selection range (zoom) if present in URL
+					const sharedSel = getSelectionFromUrl();
+					if (sharedSel) {
+						const records = data.records;
+						const startIdx = findClosestIndex(records, sharedSel.startElapsed);
+						const endIdx = findClosestIndex(records, sharedSel.endElapsed, true);
+						store.setSelectionRange({
+							startIndex: startIdx,
+							endIndex: endIdx,
+							startElapsed: records[startIdx]?.elapsed ?? sharedSel.startElapsed,
+							endElapsed: records[Math.min(endIdx - 1, records.length - 1)]?.elapsed ?? sharedSel.endElapsed,
+						});
+					}
+
+					// Clean share params from URL so refresh doesn't re-fetch
 					cleanShareUrl();
 				} else {
 					store.setError('This share link is invalid or has expired.');

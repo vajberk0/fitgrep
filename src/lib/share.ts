@@ -65,6 +65,7 @@ export async function shareWorkout(
 	buffer: ArrayBuffer,
 	filename: string,
 	fields: string[],
+	selection?: { startElapsed: number; endElapsed: number } | null,
 ): Promise<ShareResult> {
 	const payload: SharePayload = {
 		v: 1,
@@ -88,7 +89,12 @@ export async function shareWorkout(
 
 	// Build share URL pointing to the fitgrep app with ?s=ID param
 	const base = window.location.origin + window.location.pathname;
-	const url = `${base}?s=${id}`;
+	let url = `${base}?s=${id}`;
+
+	// Append selection range if present (elapsed seconds: &t=<start>-<end>)
+	if (selection) {
+		url += `&t=${Math.round(selection.startElapsed)}-${Math.round(selection.endElapsed)}`;
+	}
 
 	return { url, id };
 }
@@ -135,12 +141,33 @@ export function getShareIdFromUrl(): string | null {
 }
 
 /**
- * Remove the share ID from the URL without triggering navigation.
+ * Get selection range from URL params (?t=<start>-<end> in elapsed seconds).
+ * Returns null if no selection param present.
  */
+export function getSelectionFromUrl(): { startElapsed: number; endElapsed: number } | null {
+	const params = new URLSearchParams(window.location.search);
+	const t = params.get('t');
+	if (!t) return null;
+	const parts = t.split('-');
+	if (parts.length !== 2) return null;
+	const start = parseFloat(parts[0]);
+	const end = parseFloat(parts[1]);
+	if (isNaN(start) || isNaN(end) || start < 0 || end <= start) return null;
+	return { startElapsed: start, endElapsed: end };
+}
+
 export function cleanShareUrl(): void {
 	const url = new URL(window.location.href);
+	let changed = false;
 	if (url.searchParams.has('s')) {
 		url.searchParams.delete('s');
+		changed = true;
+	}
+	if (url.searchParams.has('t')) {
+		url.searchParams.delete('t');
+		changed = true;
+	}
+	if (changed) {
 		window.history.replaceState({}, '', url.toString());
 	}
 }

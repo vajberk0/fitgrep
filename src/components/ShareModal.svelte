@@ -38,6 +38,7 @@
 				buffer,
 				store.currentFilename,
 				store.enabledFields,
+				store.selectionRange,
 			);
 
 			shareLink = result.url;
@@ -98,7 +99,7 @@
 			{#if !shareLink && !shareError}
 				<div class="modal-body">
 					<p class="share-description">
-						Create a link that lets anyone view this workout with the same charts and fields you have selected.
+						Create a link that lets anyone view this workout with the same charts, fields, and time selection you have.
 					</p>
 					<p class="share-note">
 						The FIT file will be uploaded to a shareable link that expires after 90 days.
