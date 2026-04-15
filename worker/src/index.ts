@@ -17,6 +17,7 @@ export interface Env {
 }
 
 const MAX_PAYLOAD_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_TOTAL_STORAGE = 9 * 1024 * 1024 * 1024; // 9 GB (1 GB buffer under 10 GB free tier)
 const SHARE_ID_LENGTH = 8;
 const CHARSET = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
@@ -40,6 +41,23 @@ function jsonResponse(body: unknown, status = 200, extra: Record<string, string>
 		status,
 		headers: { 'Content-Type': 'application/json', ...extra },
 	});
+}
+
+/**
+ * Sum the sizes of all objects in the R2 bucket.
+ * Paginates through all keys (max 1000 per page).
+ */
+async function getTotalStorage(bucket: R2Bucket): Promise<number> {
+	let total = 0;
+	let cursor: string | undefined;
+	do {
+		const listed = await bucket.list({ limit: 1000, cursor });
+		for (const obj of listed.objects) {
+			total += obj.size;
+		}
+		cursor = listed.truncated ? listed.cursor : undefined;
+	} while (cursor);
+	return total;
 }
 
 export default {
@@ -73,6 +91,12 @@ export default {
 				}
 			} catch {
 				return jsonResponse({ error: 'Invalid JSON' }, 400, cors);
+			}
+
+			// Reject uploads that would exceed the storage cap
+			const currentStorage = await getTotalStorage(env.BUCKET);
+			if (currentStorage + body.byteLength > MAX_TOTAL_STORAGE) {
+				return jsonResponse({ error: 'Storage limit reached' }, 507, cors);
 			}
 
 			const id = generateId();
