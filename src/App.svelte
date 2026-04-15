@@ -171,6 +171,8 @@
 		align-items: center;
 		justify-content: space-between;
 		margin-bottom: 1.5rem;
+		flex-wrap: wrap;
+		gap: 0.5rem;
 	}
 
 	.header-left {
@@ -191,6 +193,32 @@
 		font-size: 0.85rem;
 		color: var(--text-muted);
 		font-weight: 500;
+	}
+
+	@media (max-width: 480px) {
+		.app-tagline {
+			display: none;
+		}
+
+		.header-left {
+			gap: 0.5rem;
+		}
+
+		.header-actions {
+			flex-shrink: 0;
+			margin-left: auto;
+		}
+
+		.btn-new {
+			padding: 0.45rem 0.6rem;
+			font-size: 0;
+			gap: 0;
+		}
+
+		.btn-new svg {
+			width: 18px;
+			height: 18px;
+		}
 	}
 
 	.github-link {

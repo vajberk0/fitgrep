@@ -325,6 +325,19 @@
 		color: var(--accent);
 	}
 
+	@media (max-width: 480px) {
+		.btn-share {
+			padding: 0.45rem 0.6rem;
+			font-size: 0;
+			gap: 0;
+		}
+
+		.btn-share svg {
+			width: 18px;
+			height: 18px;
+		}
+	}
+
 	.share-error {
 		font-size: 0.9rem;
 		color: #dc2626;
