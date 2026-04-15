@@ -6,7 +6,7 @@ compatibility_date = "2025-04-15"
 # Create the bucket first:  wrangler r2 bucket create fitgrep-shares
 [[r2_buckets]]
 bucket_name = "fitgrep-shares"
-binding = "fitgrep_shares"
+binding = "BUCKET"
 
 
 # ── Environment variables ─────────────────────────────────────────────────
