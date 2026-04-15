@@ -5,12 +5,12 @@ import type { FieldInfo } from './types';
  * Maps raw field keys (snake_case as output by fit-file-parser) to human-readable labels, units, scale factors, and default visibility.
  */
 export const FIELD_CONFIG: Record<string, Partial<FieldInfo>> = {
-	heart_rate: { label: 'Heart Rate', unit: 'bpm', scale: 1, defaultEnabled: true },
-	enhanced_speed: { label: 'Speed', unit: 'km/h', scale: 3.6, defaultEnabled: true },
-	speed: { label: 'Speed', unit: 'km/h', scale: 3.6, defaultEnabled: true },
+	heart_rate: { label: 'Heart Rate', unit: 'bpm', scale: 1, defaultEnabled: true, color: '#e74c3c' },
+	enhanced_speed: { label: 'Speed', unit: 'km/h', scale: 3.6, defaultEnabled: true, color: '#3498db' },
+	speed: { label: 'Speed', unit: 'km/h', scale: 3.6, defaultEnabled: true, color: '#3498db' },
 	cadence: { label: 'Cadence', unit: 'rpm', scale: 1, defaultEnabled: true },
-	enhanced_altitude: { label: 'Altitude', unit: 'm', scale: 1, defaultEnabled: true },
-	altitude: { label: 'Altitude', unit: 'm', scale: 1, defaultEnabled: true },
+	enhanced_altitude: { label: 'Altitude', unit: 'm', scale: 1, defaultEnabled: true, color: '#7f8c8d' },
+	altitude: { label: 'Altitude', unit: 'm', scale: 1, defaultEnabled: true, color: '#7f8c8d' },
 	power: { label: 'Power', unit: 'W', scale: 1, defaultEnabled: true },
 	temperature: { label: 'Temperature', unit: '°C', scale: 1, defaultEnabled: false },
 	accumulated_power: { label: 'Accumulated Power', unit: 'J', scale: 1, defaultEnabled: false },
@@ -78,6 +78,6 @@ export function buildFieldInfo(key: string, index: number): FieldInfo {
 		unit: config?.unit ?? '',
 		scale: config?.scale ?? 1,
 		defaultEnabled: config?.defaultEnabled ?? false,
-		color: SERIES_COLORS[index % SERIES_COLORS.length],
+		color: config?.color ?? SERIES_COLORS[index % SERIES_COLORS.length],
 	};
 }
