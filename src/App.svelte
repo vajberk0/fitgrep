@@ -3,7 +3,8 @@
 	import { onMount } from 'svelte';
 	import { store } from '$lib/store.svelte';
 	import { loadLastFile } from '$lib/preferences';
-	import { loadFileBuffer } from '$lib/storage';
+	import { loadFileBuffer, saveFile } from '$lib/storage';
+	import { getShareIdFromUrl, loadSharedWorkout, cleanShareUrl } from '$lib/share';
 	import UploadZone from './components/UploadZone.svelte';
 	import ErrorBar from './components/ErrorBar.svelte';
 	import WorkoutSummary from './components/WorkoutSummary.svelte';
@@ -12,13 +13,52 @@
 	import StatsPanel from './components/StatsPanel.svelte';
 	import GpsMap from './components/GpsMap.svelte';
 	import StoredFiles from './components/StoredFiles.svelte';
+	import ShareModal from './components/ShareModal.svelte';
 
 	function handleNewFile() {
 		store.setWorkoutData(null);
 	}
 
-	// Auto-load last viewed file on mount
+	// Auto-load shared workout or last viewed file on mount
 	onMount(async () => {
+		// Check for share link first (?s=ID)
+		const shareId = getShareIdFromUrl();
+		if (shareId) {
+			store.setLoading(true);
+			try {
+				const shared = await loadSharedWorkout(shareId);
+				if (shared) {
+					const { parseFitFile } = await import('$lib/parser');
+					const data = await parseFitFile(shared.buffer);
+
+					// Save to localStorage so user can revisit without the share link
+					saveFile(shared.filename, shared.buffer, data.summary);
+					store.refreshStoredFiles();
+
+					store.setWorkoutData(data, shared.filename);
+
+					// Apply the sharer's enabled fields to preserve their view
+					if (shared.fields.length > 0) {
+						store.setEnabledFields(shared.fields);
+					}
+
+					// Clean ?s= from URL so refresh doesn't re-fetch
+					cleanShareUrl();
+				} else {
+					store.setError('This share link is invalid or has expired.');
+					cleanShareUrl();
+				}
+			} catch (err) {
+				console.error('Share load failed:', err);
+				store.setError('Could not load shared workout.');
+				cleanShareUrl();
+			} finally {
+				store.setLoading(false);
+			}
+			return;
+		}
+
+		// Fall back to auto-loading last viewed file
 		const lastFile = loadLastFile();
 		if (!lastFile) return;
 
@@ -49,14 +89,17 @@
 			</a>
 		</div>
 		{#if store.data}
-			<button class="btn-new" onclick={handleNewFile}>
+			<div class="header-actions">
+				<ShareModal />
+				<button class="btn-new" onclick={handleNewFile}>
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
 					<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
 					<polyline points="17 8 12 3 7 8" />
 					<line x1="12" y1="3" x2="12" y2="15" />
 				</svg>
 				New File
-			</button>
+				</button>
+			</div>
 		{/if}
 	</header>
 
@@ -134,6 +177,12 @@
 	.github-link:hover {
 		opacity: 1;
 		color: var(--text);
+	}
+
+	.header-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
 	}
 
 	.btn-new {

@@ -1,0 +1,13 @@
+{
+  "name": "fitgrep-share-worker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250404.0",
+    "wrangler": "^4.6.0"
+  }
+}

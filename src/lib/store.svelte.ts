@@ -7,6 +7,7 @@ import { saveFieldPreferences, loadFieldPreferences, saveLastFile, clearLastFile
 // Svelte 5 runes-based store using module-level $state
 
 let workoutData = $state<WorkoutData | null>(null);
+let currentFilename = $state<string | null>(null);
 let enabledFields = $state<string[]>([]); // field keys
 let selectionRange = $state<SelectionRange | null>(null);
 let isLoading = $state(false);
@@ -46,6 +47,7 @@ function getSelectionDuration(): number {
 
 function setWorkoutData(data: WorkoutData | null, filename?: string) {
 	workoutData = data;
+	currentFilename = filename ?? null;
 	if (data) {
 		// Apply saved field preferences if available, otherwise use defaults
 		const saved = loadFieldPreferences();
@@ -67,6 +69,19 @@ function setWorkoutData(data: WorkoutData | null, filename?: string) {
 		clearLastFile();
 	}
 	selectionRange = null;
+}
+
+/**
+ * Set enabled fields from a shared workout (preserves sharer's view).
+ */
+function setEnabledFields(fields: string[]) {
+	if (!workoutData) return;
+	const availableKeys = new Set(workoutData.availableFields.map((f) => f.key));
+	enabledFields = fields.filter((k) => availableKeys.has(k));
+	// Fall back to defaults if none of the shared fields exist
+	if (enabledFields.length === 0) {
+		enabledFields = workoutData.availableFields.filter((f) => f.defaultEnabled).map((f) => f.key);
+	}
 }
 
 function toggleField(key: string) {
@@ -101,6 +116,7 @@ storedFiles = getStoredFiles();
 
 export const store = {
 	get data() { return workoutData; },
+	get currentFilename() { return currentFilename; },
 	get enabledFields() { return enabledFields; },
 	get selectionRange() { return selectionRange; },
 	get isLoading() { return isLoading; },
@@ -111,6 +127,7 @@ export const store = {
 	get storedFiles() { return storedFiles; },
 
 	setWorkoutData,
+	setEnabledFields,
 	toggleField,
 	setSelectionRange,
 	setLoading,

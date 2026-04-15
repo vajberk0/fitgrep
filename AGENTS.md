@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Single-page web app that lets athletes upload Garmin .FIT workout files and explore performance data through interactive charts with timeline-based selection for MIN/AVG/MAX statistics. Built entirely frontend — no backend required.
+Single-page web app that lets athletes upload Garmin .FIT workout files and explore performance data through interactive charts with timeline-based selection for MIN/AVG/MAX statistics. Frontend-only app with an optional Cloudflare Worker backend for share-by-link functionality.
 
 ## Tech Stack
 
@@ -27,6 +27,7 @@ src/
 │   ├── stats.ts                 # MIN/AVG/MAX calc, formatting utilities
 │   ├── store.svelte.ts          # Svelte 5 reactive store (module-level $state + getter fns)
 │   ├── storage.ts               # LocalStorage persistence for uploaded FIT files
+│   ├── share.ts                 # Share-by-link: upload/load shared workouts via Cloudflare Worker
 │   └── preferences.ts           # Cookie/localStorage for field preferences & last viewed file
 └── components/
     ├── UploadZone.svelte        # Drag & drop + file input, calls parser via dynamic import
@@ -36,7 +37,8 @@ src/
     ├── WorkoutChart.svelte      # ECharts multi-series chart with dataZoom slider
     ├── StatsPanel.svelte        # MIN/AVG/MAX table, selection-aware
     ├── GpsMap.svelte            # Leaflet map with track + selection highlight
-    └── WorkoutSummary.svelte    # Date, sport, duration, distance, elevation bar
+    ├── WorkoutSummary.svelte    # Date, sport, duration, distance, elevation bar
+    └── ShareModal.svelte        # Share-by-link modal: upload workout, get copyable URL
 ```
 
 ## Key Design Decisions
@@ -61,6 +63,44 @@ src/
 - GPS track ↔ record index mapping is approximate (fractional), not 1:1
 - FIT files store position as degrees (parser handles conversion from semicircles)
 - Sample files in repo root: `externalHR.fit`
+
+## Sharing — Cloudflare Worker + R2
+
+The share-by-link feature uses a Cloudflare Worker deployed separately from the main app.
+
+```
+worker/
+├── src/index.ts       # Worker: POST /share, GET /share/:id
+├── wrangler.toml      # R2 binding + CORS config
+├── package.json
+└── README.md           # Deployment instructions
+```
+
+**How it works:**
+1. User clicks "Share" → frontend uploads FIT file (base64) + enabled fields to the worker
+2. Worker stores the payload in R2 and returns a short ID (8 alphanumeric chars)
+3. Recipient opens `fitgrep.app?s=<id>` → frontend detects the param, fetches the payload, parses and displays
+4. The shared workout is also saved to the recipient's localStorage for easy re-access
+5. Shares auto-expire after 90 days
+
+**Configuration:**
+- `VITE_SHARE_API` env var (defaults to `http://localhost:8787` for dev)
+- Worker `CORS_ORIGIN` var (set to production domain in `wrangler.toml`)
+
+**Worker commands:**
+```bash
+cd worker
+npm install
+npx wrangler r2 bucket create fitgrep-shares  # one-time bucket creation
+npx wrangler dev                                 # local dev
+cd .. && VITE_SHARE_API=http://localhost:8787 npm run dev  # frontend + worker together
+```
+
+**Deploy worker:**
+```bash
+cd worker && npx wrangler deploy
+```
+Then set `VITE_SHARE_API` to the worker URL (custom domain or `*.workers.dev`) for production builds.
 
 ## Commands
 
