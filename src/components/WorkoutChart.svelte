@@ -132,8 +132,17 @@
 		// Build markLines: use lap boundaries if available, otherwise fall back to 5-min intervals
 		const markLineData: any[] = [];
 		if (laps.length > 0) {
+			// Compute cumulative distance at each lap start (for distance-axis mark lines)
+			const lapCumulativeDistances = laps.map((lap) => {
+				// Find the record at the lap's start elapsed time
+				let idx = 0;
+				for (let j = 0; j < records.length; j++) {
+					if (records[j].elapsed >= lap.startElapsed) { idx = j; break; }
+				}
+				return records[idx]?.distance ?? null;
+			});
 			for (let i = 1; i < laps.length; i++) {
-				const lapXVal = axis === 'distance' && laps[i].distance != null ? laps[i].distance : laps[i].startElapsed;
+				const lapXVal = axis === 'distance' && lapCumulativeDistances[i] != null ? lapCumulativeDistances[i] : laps[i].startElapsed;
 				markLineData.push({
 					xAxis: lapXVal,
 					label: {

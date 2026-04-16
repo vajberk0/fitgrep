@@ -144,11 +144,21 @@ node test-fitgrep.cjs
 
 See `test-fitgrep-instructions.md` for the full setup, element selectors, and workflow.
 
+#### Lap Line Positioning Regression Test
+
+**`test-lap-lines.cjs`** — verifies that vertical lap boundary lines are correctly positioned on the chart when the x-axis is set to Distance mode. In distance mode, lap lines should be spread across the chart at cumulative distances, not clustered at each lap's individual distance.
+
+```bash
+cd /home/shipadmin/fitgrep
+node test-lap-lines.cjs
+```
+
 ### Manual Verification
 
 - `npx svelte-check` — type checking
 - `npm run build` — full production build
 - `node test-fitgrep.cjs` — automated UI tests (see above)
+- `node test-lap-lines.cjs` — lap line positioning regression test
 - Manual testing in browser: upload a .FIT file, verify chart renders, check stats table, verify GPS map, test Time/Distance axis toggle
 
 ## Future Enhancements (from PLAN.md)
