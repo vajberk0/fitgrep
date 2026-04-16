@@ -9,6 +9,7 @@
 	let resizeObserver: ResizeObserver | null = null;
 	let chartReady = $state(false);
 	let programmaticZoom = false;
+	let programmaticZoomTimer: ReturnType<typeof setTimeout> | null = null;
 
 	onMount(async () => {
 		const echarts = await import('echarts');
@@ -48,8 +49,19 @@
 		return () => {
 			resizeObserver?.disconnect();
 			chart?.dispose();
+			if (programmaticZoomTimer) clearTimeout(programmaticZoomTimer);
 		};
 	});
+
+	/** Set programmaticZoom true and schedule it to clear after a brief delay
+	 *  to catch any async datazoom events from ECharts. */
+	function guardProgrammaticZoom() {
+		programmaticZoom = true;
+		if (programmaticZoomTimer) clearTimeout(programmaticZoomTimer);
+		programmaticZoomTimer = setTimeout(() => {
+			programmaticZoom = false;
+		}, 100);
+	}
 
 	// Reactive chart update
 	$effect(() => {
@@ -234,22 +246,12 @@
 			],
 		};
 
-		programmaticZoom = true;
+		guardProgrammaticZoom();
 		chart.setOption(option, true);
-		programmaticZoom = false;
 
-		programmaticZoom = true;
-		if (currentSelection) {
-			store.setSelectionRange(currentSelection);
-		} else {
-			store.setSelectionRange({
-				startIndex: 0,
-				endIndex: totalRecords,
-				startElapsed: records[0]?.elapsed ?? 0,
-				endElapsed: records[totalRecords - 1]?.elapsed ?? 0,
-			});
-		}
-		programmaticZoom = false;
+		// Don't re-set the selection range here — selectLap or the datazoom
+		// handler already manages it. Re-setting causes async event timing issues
+		// that can override the range with stale data.
 	});
 
 	function handleLapClick(lapNumber: number | null) {
