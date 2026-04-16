@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { store } from '$lib/store.svelte';
 	import { formatElapsed, formatPaceDecimal } from '$lib/stats';
 	import type { EChartsType } from 'echarts';
@@ -160,8 +160,9 @@
 			}
 		}
 
-		// Read current zoom to preserve across rebuilds
-		const currentRange = store.selectionRange;
+		// Read current zoom to preserve across rebuilds (untracked so zoom changes
+		// don't trigger a full chart rebuild — zoom is handled via dispatchAction)
+		const currentRange = untrack(() => store.selectionRange);
 		const totalRecords = records.length;
 		let startPct = 0;
 		let endPct = 100;
