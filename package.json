@@ -25,6 +25,7 @@
     "@garmin/fitsdk": "^21.200.0",
     "echarts": "^6.0.0",
     "fit-file-parser": "^2.3.3",
-    "leaflet": "^1.9.4"
+    "leaflet": "^1.9.4",
+    "playwright": "^1.59.1"
   }
 }

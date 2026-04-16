@@ -130,6 +130,26 @@ npx svelte-check # Type checking
 
 Deploy workflow at `.github/workflows/deploy.yml` — builds and deploys via GitHub Actions. Source must be set to "GitHub Actions" in repo Settings → Pages.
 
+## Testing
+
+### Automated UI Testing (Playwright)
+
+Run the Playwright test script at **`test-fitgrep.cjs`** for headless browser testing. It uploads a sample `.FIT` file and captures before/after screenshots while inspecting DOM changes.
+
+```bash
+cd /home/shipadmin/fitgrep
+node test-fitgrep.cjs
+```
+
+See `test-fitgrep-instructions.md` for the full setup, element selectors, and workflow.
+
+### Manual Verification
+
+- `npx svelte-check` — type checking
+- `npm run build` — full production build
+- `node test-fitgrep.cjs` — automated UI tests (see above)
+- Manual testing in browser: upload a .FIT file, verify chart renders, check stats table, verify GPS map
+
 ## Future Enhancements (from PLAN.md)
 
 - Multiple file comparison
