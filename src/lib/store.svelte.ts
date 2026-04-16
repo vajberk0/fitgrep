@@ -10,6 +10,7 @@ let workoutData = $state<WorkoutData | null>(null);
 let currentFilename = $state<string | null>(null);
 let enabledFields = $state<string[]>([]); // field keys
 let selectionRange = $state<SelectionRange | null>(null);
+let chartAxis = $state<'time' | 'distance'>('time'); // x-axis basis for chart
 let selectedLap = $state<number | null>(null); // 1-based lap number, or null
 let isLoading = $state(false);
 let errorMessage = $state<string | null>(null);
@@ -54,6 +55,8 @@ function selectLap(lapNumber: number | null) {
 			endIndex: totalRecords,
 			startElapsed: workoutData.records[0]?.elapsed ?? 0,
 			endElapsed: workoutData.records[totalRecords - 1]?.elapsed ?? 0,
+			startDistance: workoutData.records[0]?.distance,
+			endDistance: workoutData.records[totalRecords - 1]?.distance,
 		};
 		return;
 	}
@@ -74,6 +77,8 @@ function selectLap(lapNumber: number | null) {
 		endIndex: ei,
 		startElapsed: records[si]?.elapsed ?? lap.startElapsed,
 		endElapsed: records[Math.min(ei - 1, records.length - 1)]?.elapsed ?? lap.endElapsed,
+		startDistance: records[si]?.distance,
+		endDistance: records[Math.min(ei - 1, records.length - 1)]?.distance,
 	};
 }
 
@@ -158,6 +163,7 @@ export const store = {
 	get currentFilename() { return currentFilename; },
 	get enabledFields() { return enabledFields; },
 	get selectionRange() { return selectionRange; },
+	get chartAxis() { return chartAxis; },
 	get isLoading() { return isLoading; },
 	get errorMessage() { return errorMessage; },
 	get enabledFieldInfos() { return getEnabledFieldInfos(); },
@@ -173,6 +179,9 @@ export const store = {
 	clearLapSelection,
 	toggleField,
 	setSelectionRange,
+	setChartAxis(axis: 'time' | 'distance') {
+		chartAxis = axis;
+	},
 	setLoading,
 	setError,
 	refreshStoredFiles,

@@ -34,8 +34,8 @@ src/
     ├── StoredFiles.svelte       # Lists previously uploaded workouts from local storage
     ├── ErrorBar.svelte          # Dismissable error notifications
     ├── FieldSelector.svelte     # Toggleable chips for discovered metrics
-    ├── WorkoutChart.svelte      # ECharts multi-series chart with dataZoom slider
-    ├── StatsPanel.svelte        # MIN/AVG/MAX table, selection-aware
+    ├── WorkoutChart.svelte      # ECharts multi-series chart with Time/Distance axis toggle + dataZoom slider
+    ├── StatsPanel.svelte        # MIN/AVG/MAX table, selection-aware (shows distance range when chart is in distance mode)
     ├── GpsMap.svelte            # Leaflet map with track + selection highlight
     ├── WorkoutSummary.svelte    # Date, sport, duration, distance, elevation bar
     └── ShareModal.svelte        # Share-by-link modal: upload workout, get copyable URL
@@ -73,6 +73,7 @@ src/
 - `parseFitFile()` is **async** (returns Promise) — always `await` it
 - `bind:this` variables (like chart/map containers) trigger Svelte warnings about `$state` — these are false positives, don't add `$state` to them
 - ECharts `dataZoom` event fires frequently; store updates are synchronous so no throttling needed
+- `store.chartAxis` controls whether the chart X-axis shows elapsed time or cumulative distance; switching axis doesn't change the underlying selection indices, only the x-axis representation
 - GPS track ↔ record index mapping is approximate (fractional), not 1:1
 - FIT files store position as degrees (parser handles conversion from semicircles)
 - Sample files in repo root: `externalHR.fit`
@@ -148,7 +149,7 @@ See `test-fitgrep-instructions.md` for the full setup, element selectors, and wo
 - `npx svelte-check` — type checking
 - `npm run build` — full production build
 - `node test-fitgrep.cjs` — automated UI tests (see above)
-- Manual testing in browser: upload a .FIT file, verify chart renders, check stats table, verify GPS map
+- Manual testing in browser: upload a .FIT file, verify chart renders, check stats table, verify GPS map, test Time/Distance axis toggle
 
 ## Future Enhancements (from PLAN.md)
 

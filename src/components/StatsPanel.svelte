@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { store } from '$lib/store.svelte';
-	import { formatElapsed, formatPaceDecimal } from '$lib/stats';
+	import { formatElapsed, formatPaceDecimal, formatDistance } from '$lib/stats';
 	import type { FieldStats, FieldInfo } from '$lib/types';
 
 	function fmt(val: number, field?: FieldInfo): string {
@@ -18,8 +18,12 @@
 			<div class="stats-title">Statistics</div>
 			<div class="stats-range">
 				{#if store.selectionRange}
-					{formatElapsed(store.selectionRange.startElapsed)} – {formatElapsed(store.selectionRange.endElapsed)}
-					<span class="stats-duration">({formatElapsed(store.selectionDuration)})</span>
+					{#if store.chartAxis === 'distance' && store.selectionRange.startDistance != null}
+						{formatDistance(store.selectionRange.startDistance)} – {formatDistance(store.selectionRange.endDistance)}
+					{:else}
+						{formatElapsed(store.selectionRange.startElapsed)} – {formatElapsed(store.selectionRange.endElapsed)}
+						<span class="stats-duration">({formatElapsed(store.selectionDuration)})</span>
+					{/if}
 				{:else}
 					Full workout
 				{/if}

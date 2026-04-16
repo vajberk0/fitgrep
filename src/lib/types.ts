@@ -51,6 +51,8 @@ export interface SelectionRange {
 	endIndex: number;
 	startElapsed: number;
 	endElapsed: number;
+	startDistance?: number;
+	endDistance?: number;
 }
 
 export interface LapInfo {

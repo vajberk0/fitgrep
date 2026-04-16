@@ -53,9 +53,9 @@ The app is **data-agnostic**: it doesn't assume which metrics are present. Inste
 │  │  │   Altitude    ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓              │ │   │
 │  │  │                                                       │ │   │
 │  │  └─────────────────────────────────────────────────────┘ │   │
-│  │  X-axis: Time (elapsed or clock time)                   │   │
+│  │  X-axis: Time or Distance (user toggle)                 │   │
 │  │  ┌─────────────────────────────────────────────────────┐ │   │
-│  │  │          Timeline Selection Brush / Scrubber         │ │   │
+│  │  │          Distance/Time Selection Brush / Scrubber    │ │   │
 │  │  │  |←━━━━━━━━━━━━━━━━━━━━━━━━━━━→|  (draggable)        │ │   │
 │  │  └─────────────────────────────────────────────────────┘ │   │
 │  └─────────────────────────────────────────────────────────┘   │
@@ -114,7 +114,7 @@ The app is **data-agnostic**: it doesn't assume which metrics are present. Inste
 ### 4.4 Unified Chart
 - **Primary Library**: Apache ECharts v5
 - **Single chart, multiple series**: All enabled fields rendered as separate line series on the same chart
-- **X-axis**: Time (elapsed seconds since workout start, or wall-clock time — user toggle)
+- **X-axis**: Time (elapsed seconds) or Distance (cumulative meters) — user toggle. Distance mode is only available when the FIT file contains distance data.
 - **Y-axis**: 
   - **Left Y-axis**: Primary metrics (first enabled field or user-selected)
   - **Right Y-axis**: If fields have very different scales, offer dual Y-axis option
@@ -233,12 +233,13 @@ The app is **data-agnostic**: it doesn't assume which metrics are present. Inste
 - [ ] Connect to store: update `availableFields` and `enabledFields`
 
 ### Phase 4: Chart Component
-- [ ] Build `WorkoutChart.svelte` with ECharts
-- [ ] Dynamic series generation from `enabledFields`
-- [ ] Time (elapsed) X-axis formatting
-- [ ] Multi-series line chart with shared time axis
-- [ ] Tooltip showing all series values at cursor
-- [ ] ECharts `sampling: 'lttb'` for large datasets
+- [x] Build `WorkoutChart.svelte` with ECharts
+- [x] Dynamic series generation from `enabledFields`
+- [x] Time (elapsed) X-axis formatting
+- [x] Multi-series line chart with shared time axis
+- [x] Tooltip showing all series values at cursor
+- [x] ECharts `sampling: 'lttb'` for large datasets
+- [x] Time/Distance axis toggle for X-axis (switches between elapsed time and cumulative distance)
 
 ### Phase 5: Selection + Stats
 - [ ] ECharts dataZoom slider (bottom of chart)
@@ -259,7 +260,7 @@ The app is **data-agnostic**: it doesn't assume which metrics are present. Inste
 - [ ] Performance optimization (Web Worker for >5MB files)
 - [ ] Export stats as CSV
 - [ ] Dark/light theme toggle
-- [ ] Wall-clock time toggle on X-axis
+- [x] Time/Distance axis toggle on X-axis (implemented in Phase 4)
 
 ---
 

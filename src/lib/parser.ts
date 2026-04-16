@@ -123,6 +123,11 @@ export async function parseFitFile(buffer: ArrayBuffer): Promise<WorkoutData> {
 			}
 		}
 
+		// Always include cumulative distance for distance-based x-axis (even though it's excluded from chart metrics)
+		if (typeof rec.distance === 'number' && !isNaN(rec.distance)) {
+			dp.distance = rec.distance;
+		}
+
 		dataPoints.push(dp);
 	}
 

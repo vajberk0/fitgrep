@@ -12,8 +12,8 @@ No account, no backend, no data leaves your browser.
 
 - **Drag & drop upload** — drop any Garmin `.FIT` file and start exploring instantly
 - **Auto-discovered metrics** — all record fields in the file are detected and shown as toggleable chips (heart rate, speed, pace, power, cadence, elevation, temperature, and more)
-- **Interactive multi-series charts** — Apache ECharts with a data-zoom slider for scrubbing through your workout timeline
-- **Selection-aware stats** — select any time range on the chart and get live MIN / AVG / MAX for every active metric
+- **Interactive multi-series charts** — Apache ECharts with a data-zoom slider for scrubbing through your workout, with a **Time/Distance toggle** to switch the X-axis between elapsed time and cumulative distance
+- **Selection-aware stats** — select any time or distance range on the chart and get live MIN / AVG / MAX for every active metric
 - **GPS map** — Leaflet + OpenStreetMap track overlay with highlighted selection segment
 - **Workout summary** — date, sport, duration, distance, and elevation gain/loss at a glance
 - **Fully client-side** — zero server dependency, all parsing and rendering happens in-browser
@@ -59,7 +59,7 @@ Open [http://localhost:5173](http://localhost:5173) and drop a `.FIT` file onto 
 1. **Upload** — you drop a `.FIT` file (or pick one via the file input)
 2. **Parse** — `fit-file-parser` reads binary FIT records into structured JavaScript objects. Scale conversions (e.g. speed → km/h) happen here
 3. **Discover** — all detected metrics are presented as toggleable field chips; unknown fields get auto-generated labels and are off by default
-4. **Explore** — multi-series ECharts chart with a time-axis data-zoom slider. Drag to select any sub-range
+4. **Explore** — multi-series ECharts chart with a Time/Distance toggle and a data-zoom slider for scrubbing through your workout. Drag to select any sub-range.
 5. **Stats** — the stats panel and GPS map update in real time as you adjust the selection
 
 ## fit-file-parser Patch

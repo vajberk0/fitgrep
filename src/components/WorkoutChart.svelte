@@ -8,6 +8,7 @@
 	let chart: EChartsType | null = $state(null);
 	let resizeObserver: ResizeObserver | null = null;
 	let chartReady = $state(false);
+	let hasDistance = $state(false);
 
 	// Guard flag: suppress datazoom events during programmatic zoom changes
 	let suppressingZoomEvents = false;
@@ -46,6 +47,8 @@
 				endIndex: endIdx,
 				startElapsed: records[startIdx]?.elapsed ?? 0,
 				endElapsed: records[Math.min(endIdx - 1, totalRecords - 1)]?.elapsed ?? 0,
+				startDistance: hasDistance ? records[startIdx]?.distance : undefined,
+				endDistance: hasDistance ? records[Math.min(endIdx - 1, totalRecords - 1)]?.distance : undefined,
 			});
 		});
 
@@ -72,9 +75,10 @@
 	$effect(() => {
 		if (!chart || !store.data || !chartReady) return;
 
-		// Depend on data + fields
+		// Depend on data + fields + chart axis
 		const enabledInfos = store.enabledFieldInfos;
 		const records = store.data.records;
+		const axis = store.chartAxis;
 		const laps = store.data.laps;
 
 		if (records.length === 0 || enabledInfos.length === 0) {
@@ -94,6 +98,9 @@
 			return;
 		}
 
+		// Check if distance field is available in records
+		hasDistance = records.length > 0 && records[0].distance != null;
+
 		// Build Y-axes: each enabled field gets its own axis (all hidden, so no visual clutter)
 		const axisMap = new Map<string, number>();
 		const yAxes: any[] = [];
@@ -108,7 +115,8 @@
 			type: 'line' as const,
 			data: records.map((r) => {
 				const val = r[field.key];
-				return val != null ? [r.elapsed, val] : [r.elapsed, null];
+				const xVal = axis === 'distance' && r.distance != null ? r.distance : r.elapsed;
+				return val != null ? [xVal, val] : [xVal, null];
 			}),
 			yAxisIndex: axisMap.get(field.key) ?? 0,
 			symbol: 'none',
@@ -125,8 +133,9 @@
 		const markLineData: any[] = [];
 		if (laps.length > 0) {
 			for (let i = 1; i < laps.length; i++) {
+				const lapXVal = axis === 'distance' && laps[i].distance != null ? laps[i].distance : laps[i].startElapsed;
 				markLineData.push({
-					xAxis: laps[i].startElapsed,
+					xAxis: lapXVal,
 					label: {
 						formatter: `L${laps[i].number}`,
 						position: 'insideStartTop',
@@ -141,12 +150,15 @@
 				});
 			}
 		} else {
-			const maxElapsed = records[records.length - 1].elapsed;
-			for (let t = 300; t < maxElapsed; t += 300) {
+			const maxVal = axis === 'distance' && hasDistance
+				? records[records.length - 1].distance!
+				: records[records.length - 1].elapsed;
+			const interval = axis === 'distance' && hasDistance ? 500 : 300;
+			for (let t = interval; t < maxVal; t += interval) {
 				markLineData.push({
 					xAxis: t,
 					label: {
-						formatter: formatElapsed(t),
+						formatter: axis === 'distance' && hasDistance ? formatDistance(t) : formatElapsed(t),
 						position: 'insideStartTop' as const,
 						fontSize: 10,
 						color: '#999',
@@ -185,8 +197,8 @@
 				axisPointer: { type: 'cross', snap: true },
 				formatter: (params: any[]) => {
 					if (!params || params.length === 0) return '';
-					const elapsed = params[0].axisValue;
-					let html = `<div style="font-weight:600;margin-bottom:4px">${formatElapsed(elapsed)}</div>`;
+					const axisVal = params[0].axisValue;
+					let html = `<div style="font-weight:600;margin-bottom:4px">${axis === 'distance' && hasDistance ? formatDistance(axisVal) : formatElapsed(axisVal)}</div>`;
 					for (const p of params) {
 						const yVal = Array.isArray(p.value) ? p.value[1] : p.value;
 						if (yVal != null) {
@@ -205,13 +217,13 @@
 			},
 			xAxis: {
 				type: 'value',
-				name: 'Time',
+				name: axis === 'distance' && hasDistance ? 'Distance' : 'Time',
 				nameLocation: 'center',
 				nameGap: 30,
 				min: 'dataMin',
 				max: 'dataMax',
 				axisLabel: {
-					formatter: (val: number) => formatElapsed(val),
+					formatter: (val: number) => (axis === 'distance' && hasDistance ? formatDistance(val) : formatElapsed(val)),
 					fontSize: 11,
 				},
 				axisLine: { lineStyle: { color: '#ccc' } },
@@ -244,7 +256,7 @@
 						lineStyle: { color: '#3498db' },
 						areaStyle: { color: 'rgba(52, 152, 219, 0.1)' },
 					},
-					labelFormatter: (val: number) => formatElapsed(val),
+					labelFormatter: (val: number) => (axis === 'distance' && hasDistance ? formatDistance(val) : formatElapsed(val)),
 				},
 				{
 					type: 'inside',
@@ -265,6 +277,8 @@
 				endIndex: totalRecords,
 				startElapsed: records[0]?.elapsed ?? 0,
 				endElapsed: records[totalRecords - 1]?.elapsed ?? 0,
+				startDistance: hasDistance ? records[0].distance ?? 0 : undefined,
+				endDistance: hasDistance ? records[totalRecords - 1].distance : undefined,
 			});
 		}
 
@@ -322,6 +336,20 @@
 	{#if !chartReady}
 		<div class="chart-loading">Loading chart…</div>
 	{/if}
+
+	{#if store.data && hasDistance}
+		<div class="axis-toggle">
+			<button
+				class="axis-btn {store.chartAxis === 'time' ? 'active' : ''}"
+			onclick={() => store.setChartAxis('time')}
+			>Time</button>
+			<button
+				class="axis-btn {store.chartAxis === 'distance' ? 'active' : ''}"
+			onclick={() => store.setChartAxis('distance')}
+			>Distance</button>
+		</div>
+	{/if}
+
 	<div bind:this={chartEl} class="chart-el"></div>
 
 	{#if store.data && store.laps.length > 0}
@@ -370,6 +398,36 @@
 	.chart-el {
 		width: 100%;
 		height: 420px;
+	}
+
+	.axis-toggle {
+		display: flex;
+		gap: 4px;
+		padding: 8px 12px 0;
+	}
+
+	.axis-btn {
+		padding: 4px 12px;
+		border: 1px solid var(--border-color);
+		border-radius: 6px;
+		background: var(--bg);
+		color: var(--text-muted);
+		font-size: 0.75rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.15s ease;
+		font-family: inherit;
+	}
+
+	.axis-btn:hover {
+		background: var(--accent-light);
+		color: var(--text);
+	}
+
+	.axis-btn.active {
+		background: var(--accent);
+		color: white;
+		border-color: var(--accent);
 	}
 
 	.lap-pills {
