@@ -1,5 +1,5 @@
 import FitParser from 'fit-file-parser';
-import type { DataPoint, WorkoutData, WorkoutSummary, FieldInfo } from './types';
+import type { DataPoint, WorkoutData, WorkoutSummary, FieldInfo, LapInfo } from './types';
 import { buildFieldInfo, EXCLUDED_FIELDS } from './fieldConfig';
 
 const fitParser = new FitParser({
@@ -179,11 +179,33 @@ export async function parseFitFile(buffer: ArrayBuffer): Promise<WorkoutData> {
 		if (summary.maxSpeed != null) summary.maxSpeed *= 3.6;
 	}
 
+	// Extract lap data
+	const laps: LapInfo[] = [];
+	const fitLaps: any[] = raw.laps ?? [];
+	for (let i = 0; i < fitLaps.length; i++) {
+		const lap = fitLaps[i];
+		const startTs = lap.start_time ? new Date(lap.start_time).getTime() : null;
+		const endTs = lap.timestamp ? new Date(lap.timestamp).getTime() : null;
+
+		const startElapsed = startTs != null ? (startTs - firstTimestamp) / 1000 : (i > 0 && fitLaps[i - 1].timestamp ? (new Date(fitLaps[i - 1].timestamp).getTime() - firstTimestamp) / 1000 : 0);
+		const endElapsed = endTs != null ? (endTs - firstTimestamp) / 1000 : (i < fitLaps.length - 1 && fitLaps[i + 1].start_time ? (new Date(fitLaps[i + 1].start_time).getTime() - firstTimestamp) / 1000 : dataPoints[dataPoints.length - 1].elapsed);
+
+		laps.push({
+			number: i + 1,
+			startElapsed: Math.max(0, startElapsed),
+			endElapsed: Math.max(startElapsed, endElapsed),
+			duration: lap.total_elapsed_time ?? lap.total_timer_time ?? (endElapsed - startElapsed),
+			distance: lap.total_distance ?? null,
+			trigger: (lap.lap_trigger ?? '').toLowerCase().replace(/_/g, ' '),
+		});
+	}
+
 	return {
 		records: dataPoints,
 		summary,
 		availableFields,
 		gpsTrack,
+		laps,
 	};
 }
 

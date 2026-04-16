@@ -10,6 +10,7 @@ let workoutData = $state<WorkoutData | null>(null);
 let currentFilename = $state<string | null>(null);
 let enabledFields = $state<string[]>([]); // field keys
 let selectionRange = $state<SelectionRange | null>(null);
+let selectedLap = $state<number | null>(null); // 1-based lap number, or null
 let isLoading = $state(false);
 let errorMessage = $state<string | null>(null);
 let storedFiles = $state<StoredFileMeta[]>([]);
@@ -43,6 +44,43 @@ function getSelectionDuration(): number {
 	return end - start;
 }
 
+function selectLap(lapNumber: number | null) {
+	if (!workoutData || !workoutData.records.length) return;
+	if (lapNumber === null) {
+		selectedLap = null;
+		const totalRecords = workoutData.records.length;
+		selectionRange = {
+			startIndex: 0,
+			endIndex: totalRecords,
+			startElapsed: workoutData.records[0]?.elapsed ?? 0,
+			endElapsed: workoutData.records[totalRecords - 1]?.elapsed ?? 0,
+		};
+		return;
+	}
+	const lap = workoutData.laps.find(l => l.number === lapNumber);
+	if (!lap) return;
+	selectedLap = lapNumber;
+	const records = workoutData.records;
+	let si = 0;
+	let ei = records.length;
+	for (let i = 0; i < records.length; i++) {
+		if (records[i].elapsed >= lap.startElapsed) { si = i; break; }
+	}
+	for (let i = 0; i < records.length; i++) {
+		if (records[i].elapsed >= lap.endElapsed) { ei = i; break; }
+	}
+	selectionRange = {
+		startIndex: si,
+		endIndex: ei,
+		startElapsed: records[si]?.elapsed ?? lap.startElapsed,
+		endElapsed: records[Math.min(ei - 1, records.length - 1)]?.elapsed ?? lap.endElapsed,
+	};
+}
+
+function clearLapSelection() {
+	selectedLap = null;
+}
+
 // ─── Actions ──────────────────────────────────────────────────────────────
 
 function setWorkoutData(data: WorkoutData | null, filename?: string) {
@@ -69,6 +107,7 @@ function setWorkoutData(data: WorkoutData | null, filename?: string) {
 		clearLastFile();
 	}
 	selectionRange = null;
+	selectedLap = null;
 }
 
 /**
@@ -128,6 +167,10 @@ export const store = {
 
 	setWorkoutData,
 	setEnabledFields,
+	get laps() { return workoutData?.laps ?? []; },
+	get selectedLap() { return selectedLap; },
+	selectLap,
+	clearLapSelection,
 	toggleField,
 	setSelectionRange,
 	setLoading,

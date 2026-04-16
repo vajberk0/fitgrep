@@ -8,6 +8,7 @@
 	let chart: EChartsType | null = $state(null);
 	let resizeObserver: ResizeObserver | null = null;
 	let chartReady = $state(false);
+	let programmaticZoom = false;
 
 	onMount(async () => {
 		const echarts = await import('echarts');
@@ -17,7 +18,12 @@
 		resizeObserver.observe(chartEl);
 
 		chart.on('datazoom', () => {
+			if (programmaticZoom) return;
 			if (!store.data || !chart) return;
+			// User manually zoomed — deselect any selected lap pill
+			if (store.selectedLap !== null) {
+				store.clearLapSelection();
+			}
 			const option = chart.getOption() as any;
 			const dz = option.dataZoom as any[];
 			if (!dz || dz.length === 0) return;
@@ -51,6 +57,7 @@
 
 		const enabledInfos = store.enabledFieldInfos;
 		const records = store.data.records;
+		const laps = store.data.laps;
 
 		// Preserve current zoom across chart rebuilds
 		const currentSelection = store.selectionRange;
@@ -104,6 +111,47 @@
 			connectNulls: false,
 		}));
 
+		// Build markLines: use lap boundaries if available, otherwise fall back to 5-min intervals
+		const markLineData: any[] = [];
+		if (laps.length > 0) {
+			// Draw vertical lines at each lap boundary (start of lap 2, 3, ... N)
+			for (let i = 1; i < laps.length; i++) {
+				markLineData.push({
+					xAxis: laps[i].startElapsed,
+					label: {
+						formatter: `L${laps[i].number}`,
+						position: 'insideStartTop',
+						fontSize: 10,
+						color: '#666',
+					},
+					lineStyle: {
+						color: '#999',
+						width: 1,
+						type: 'dashed' as const,
+					},
+				});
+			}
+		} else {
+			// Fallback: 5-minute interval lines
+			const maxElapsed = records[records.length - 1].elapsed;
+			for (let t = 300; t < maxElapsed; t += 300) {
+				markLineData.push({
+					xAxis: t,
+					label: {
+						formatter: formatElapsed(t),
+						position: 'insideStartTop' as const,
+						fontSize: 10,
+						color: '#999',
+					},
+					lineStyle: {
+						color: '#e0e0e0',
+						width: 1,
+						type: 'dotted' as const,
+					},
+				});
+			}
+		}
+
 		const option: any = {
 			animation: false,
 			grid: {
@@ -150,7 +198,14 @@
 				axisLine: { lineStyle: { color: '#ccc' } },
 			},
 			yAxis: yAxes,
-			series,
+			series: series.length > 0 ? [{
+				...series[0],
+				markLine: markLineData.length > 0 ? {
+					silent: true,
+					symbol: 'none',
+					data: markLineData,
+				} : undefined,
+			}, ...series.slice(1)] : series,
 			dataZoom: [
 				{
 					type: 'slider',
@@ -179,9 +234,11 @@
 			],
 		};
 
+		programmaticZoom = true;
 		chart.setOption(option, true);
+		programmaticZoom = false;
 
-		// Restore selection range from before rebuild
+		programmaticZoom = true;
 		if (currentSelection) {
 			store.setSelectionRange(currentSelection);
 		} else {
@@ -192,7 +249,33 @@
 				endElapsed: records[totalRecords - 1]?.elapsed ?? 0,
 			});
 		}
+		programmaticZoom = false;
 	});
+
+	function handleLapClick(lapNumber: number | null) {
+		if (lapNumber === store.selectedLap) {
+			// Deselect if clicking the same lap
+			store.selectLap(null);
+		} else {
+			store.selectLap(lapNumber);
+		}
+	}
+
+	function formatDuration(seconds: number): string {
+		if (seconds < 60) return `${Math.round(seconds)}s`;
+		const m = Math.floor(seconds / 60);
+		const s = Math.round(seconds % 60);
+		if (m < 60) return `${m}:${String(s).padStart(2, '0')}`;
+		const h = Math.floor(m / 60);
+		const rm = m % 60;
+		return `${h}:${String(rm).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+	}
+
+	function formatDistance(meters: number | null): string {
+		if (meters == null) return '';
+		if (meters >= 1000) return `${(meters / 1000).toFixed(2)} km`;
+		return `${Math.round(meters)} m`;
+	}
 
 	function buildYAxis(field: any, index: number) {
 		const isRight = index % 2 === 1;
@@ -211,6 +294,28 @@
 		<div class="chart-loading">Loading chart…</div>
 	{/if}
 	<div bind:this={chartEl} class="chart-el"></div>
+
+	{#if store.data && store.laps.length > 0}
+		<div class="lap-pills">
+			<button
+				class="lap-pill {!store.selectedLap ? 'active' : ''}"
+				onclick={() => store.selectLap(null)}
+				title="Show full workout"
+			>
+				All
+			</button>
+			{#each store.laps as lap (lap.number)}
+				<button
+					class="lap-pill {store.selectedLap === lap.number ? 'active' : ''}"
+					onclick={() => handleLapClick(lap.number)}
+					title="Lap {lap.number}: {formatDuration(lap.duration)}{lap.distance ? ', ' + formatDistance(lap.distance) : ''}"
+				>
+					<span class="lap-number">L{lap.number}</span>
+					<span class="lap-meta">{formatDuration(lap.duration)}{lap.distance != null ? ` · ${formatDistance(lap.distance)}` : ''}</span>
+				</button>
+			{/each}
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -238,9 +343,68 @@
 		height: 420px;
 	}
 
+	.lap-pills {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		padding: 8px 12px 12px;
+		border-top: 1px solid var(--border-color);
+	}
+
+	.lap-pill {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		padding: 4px 10px;
+		border: 1px solid var(--border-color);
+		border-radius: 16px;
+		background: var(--bg);
+		color: var(--text);
+		font-size: 0.75rem;
+		cursor: pointer;
+		transition: all 0.15s ease;
+		white-space: nowrap;
+		font-family: inherit;
+		line-height: 1.3;
+	}
+
+	.lap-pill:hover {
+		background: var(--accent-light);
+		border-color: var(--accent);
+	}
+
+	.lap-pill.active {
+		background: var(--accent);
+		color: white;
+		border-color: var(--accent);
+	}
+
+	.lap-number {
+		font-weight: 700;
+	}
+
+	.lap-meta {
+		color: var(--text-muted);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.lap-pill.active .lap-meta {
+		color: rgba(255, 255, 255, 0.85);
+	}
+
 	@media (max-width: 768px) {
 		.chart-el {
 			height: 300px;
+		}
+
+		.lap-pills {
+			gap: 4px;
+			padding: 6px 8px 8px;
+		}
+
+		.lap-pill {
+			padding: 3px 8px;
+			font-size: 0.7rem;
 		}
 	}
 </style>

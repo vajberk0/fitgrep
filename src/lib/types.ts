@@ -53,11 +53,27 @@ export interface SelectionRange {
 	endElapsed: number;
 }
 
+export interface LapInfo {
+	/** Lap number (1-based) */
+	number: number;
+	/** Elapsed seconds at lap start (relative to workout start) */
+	startElapsed: number;
+	/** Elapsed seconds at lap end (relative to workout start) */
+	endElapsed: number;
+	/** Duration in seconds */
+	duration: number;
+	/** Distance in meters, if available */
+	distance: number | null;
+	/** Trigger type (e.g. 'manual', 'distance', 'time') */
+	trigger: string;
+}
+
 export interface WorkoutData {
 	records: DataPoint[];
 	summary: WorkoutSummary;
 	availableFields: FieldInfo[];
 	gpsTrack: [number, number][]; // [lat, lng] pairs
+	laps: LapInfo[];
 }
 
 export interface FieldStats {

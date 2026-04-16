@@ -20,6 +20,13 @@
 			<span class="summary-value">{formatElapsed(store.data.summary.totalDuration)}</span>
 		</div>
 		<div class="summary-divider"></div>
+		{#if store.data.laps.length > 0}
+			<div class="summary-divider"></div>
+			<div class="summary-item">
+				<span class="summary-label">Laps</span>
+				<span class="summary-value">{store.data.laps.length}</span>
+			</div>
+		{/if}
 		{#if store.data.summary.totalDistance > 0}
 			<div class="summary-item">
 				<span class="summary-label">Distance</span>

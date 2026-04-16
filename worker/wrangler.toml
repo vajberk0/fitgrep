@@ -13,7 +13,7 @@ binding = "BUCKET"
 # Set CORS_ORIGIN to your fitgrep domain (e.g. "https://fitgrep.app")
 # For local dev it defaults to "*", but lock it down for production:
 [vars]
-CORS_ORIGIN = "http://fitgrep.je.mk"
+CORS_ORIGIN = "https://fitgrep.je.mk"
 
 # ── Routes (uncomment and edit for production) ──────────────────────────────
 # [[routes]]
