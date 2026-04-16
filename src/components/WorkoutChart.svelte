@@ -8,8 +8,9 @@
 	let chart: EChartsType | null = $state(null);
 	let resizeObserver: ResizeObserver | null = null;
 	let chartReady = $state(false);
-	let programmaticZoom = false;
-	let programmaticZoomTimer: ReturnType<typeof setTimeout> | null = null;
+
+	// Guard flag: suppress datazoom events during programmatic zoom changes
+	let suppressingZoomEvents = false;
 
 	onMount(async () => {
 		const echarts = await import('echarts');
@@ -19,12 +20,9 @@
 		resizeObserver.observe(chartEl);
 
 		chart.on('datazoom', () => {
-			if (programmaticZoom) return;
+			if (suppressingZoomEvents) return;
 			if (!store.data || !chart) return;
-			// User manually zoomed — deselect any selected lap pill
-			if (store.selectedLap !== null) {
-				store.clearLapSelection();
-			}
+
 			const option = chart.getOption() as any;
 			const dz = option.dataZoom as any[];
 			if (!dz || dz.length === 0) return;
@@ -38,6 +36,11 @@
 			const startIdx = Math.floor((start / 100) * totalRecords);
 			const endIdx = Math.ceil((end / 100) * totalRecords);
 
+			// User manually zoomed — deselect any selected lap pill
+			if (store.selectedLap !== null) {
+				store.clearLapSelection();
+			}
+
 			store.setSelectionRange({
 				startIndex: startIdx,
 				endIndex: endIdx,
@@ -49,39 +52,33 @@
 		return () => {
 			resizeObserver?.disconnect();
 			chart?.dispose();
-			if (programmaticZoomTimer) clearTimeout(programmaticZoomTimer);
 		};
 	});
 
-	/** Set programmaticZoom true and schedule it to clear after a brief delay
-	 *  to catch any async datazoom events from ECharts. */
-	function guardProgrammaticZoom() {
-		programmaticZoom = true;
-		if (programmaticZoomTimer) clearTimeout(programmaticZoomTimer);
-		programmaticZoomTimer = setTimeout(() => {
-			programmaticZoom = false;
-		}, 100);
+	/** Zoom chart to a specific range using dispatchAction (lightweight, no rebuild) */
+	function zoomChartToRange(startPercent: number, endPercent: number) {
+		if (!chart) return;
+		suppressingZoomEvents = true;
+		chart.dispatchAction({
+			type: 'dataZoom',
+			start: startPercent,
+			end: endPercent,
+		});
+		// Use setTimeout to ensure any async datazoom events are also suppressed
+		setTimeout(() => { suppressingZoomEvents = false; }, 50);
 	}
 
-	// Reactive chart update
+	// Full chart rebuild — only when data/fields/laps change, not zoom
 	$effect(() => {
 		if (!chart || !store.data || !chartReady) return;
 
+		// Depend on data + fields
 		const enabledInfos = store.enabledFieldInfos;
 		const records = store.data.records;
 		const laps = store.data.laps;
 
-		// Preserve current zoom across chart rebuilds
-		const currentSelection = store.selectionRange;
-		const totalRecords = records.length;
-		let savedStartPercent = 0;
-		let savedEndPercent = 100;
-		if (currentSelection && totalRecords > 0) {
-			savedStartPercent = (currentSelection.startIndex / totalRecords) * 100;
-			savedEndPercent = (currentSelection.endIndex / totalRecords) * 100;
-		}
-
 		if (records.length === 0 || enabledInfos.length === 0) {
+			suppressingZoomEvents = true;
 			chart.setOption({
 				title: {
 					text: enabledInfos.length === 0 ? 'Select metrics above to view chart' : 'No data points',
@@ -93,6 +90,7 @@
 				yAxis: { show: false },
 				series: [],
 			}, true);
+			suppressingZoomEvents = false;
 			return;
 		}
 
@@ -126,7 +124,6 @@
 		// Build markLines: use lap boundaries if available, otherwise fall back to 5-min intervals
 		const markLineData: any[] = [];
 		if (laps.length > 0) {
-			// Draw vertical lines at each lap boundary (start of lap 2, 3, ... N)
 			for (let i = 1; i < laps.length; i++) {
 				markLineData.push({
 					xAxis: laps[i].startElapsed,
@@ -144,7 +141,6 @@
 				});
 			}
 		} else {
-			// Fallback: 5-minute interval lines
 			const maxElapsed = records[records.length - 1].elapsed;
 			for (let t = 300; t < maxElapsed; t += 300) {
 				markLineData.push({
@@ -162,6 +158,16 @@
 					},
 				});
 			}
+		}
+
+		// Read current zoom to preserve across rebuilds
+		const currentRange = store.selectionRange;
+		const totalRecords = records.length;
+		let startPct = 0;
+		let endPct = 100;
+		if (currentRange && totalRecords > 0) {
+			startPct = (currentRange.startIndex / totalRecords) * 100;
+			endPct = (currentRange.endIndex / totalRecords) * 100;
 		}
 
 		const option: any = {
@@ -222,8 +228,8 @@
 				{
 					type: 'slider',
 					xAxisIndex: 0,
-					start: savedStartPercent,
-					end: savedEndPercent,
+					start: startPct,
+					end: endPct,
 					height: 30,
 					bottom: 10,
 					borderColor: '#ddd',
@@ -242,24 +248,44 @@
 				{
 					type: 'inside',
 					xAxisIndex: 0,
+					start: startPct,
+					end: endPct,
 				},
 			],
 		};
 
-		guardProgrammaticZoom();
+		suppressingZoomEvents = true;
 		chart.setOption(option, true);
 
-		// Don't re-set the selection range here — selectLap or the datazoom
-		// handler already manages it. Re-setting causes async event timing issues
-		// that can override the range with stale data.
+		// Set initial selection to match current zoom
+		if (!currentRange) {
+			store.setSelectionRange({
+				startIndex: 0,
+				endIndex: totalRecords,
+				startElapsed: records[0]?.elapsed ?? 0,
+				endElapsed: records[totalRecords - 1]?.elapsed ?? 0,
+			});
+		}
+
+		// Keep suppressing events briefly to catch async datazoom events from setOption
+		setTimeout(() => { suppressingZoomEvents = false; }, 100);
 	});
 
 	function handleLapClick(lapNumber: number | null) {
 		if (lapNumber === store.selectedLap) {
-			// Deselect if clicking the same lap
 			store.selectLap(null);
 		} else {
 			store.selectLap(lapNumber);
+		}
+		// Zoom chart to match the new selection range
+		const sel = store.selectionRange;
+		if (sel && store.data) {
+			const totalRecords = store.data.records.length;
+			if (totalRecords > 0) {
+				const startPct = (sel.startIndex / totalRecords) * 100;
+				const endPct = (sel.endIndex / totalRecords) * 100;
+				zoomChartToRange(startPct, endPct);
+			}
 		}
 	}
 
@@ -301,7 +327,7 @@
 		<div class="lap-pills">
 			<button
 				class="lap-pill {!store.selectedLap ? 'active' : ''}"
-				onclick={() => store.selectLap(null)}
+				onclick={() => handleLapClick(null)}
 				title="Show full workout"
 			>
 				All
