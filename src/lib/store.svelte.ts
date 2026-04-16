@@ -69,7 +69,6 @@ function selectLap(lapNumber: number | null) {
 	for (let i = 0; i < records.length; i++) {
 		if (records[i].elapsed >= lap.endElapsed) { ei = i; break; }
 	}
-	console.log('[selectLap]', { lapNumber, lapStartElapsed: lap.startElapsed, lapEndElapsed: lap.endElapsed, si, ei, totalRecords: records.length, siElapsed: records[si]?.elapsed, eiElapsed: records[Math.min(ei - 1, records.length - 1)]?.elapsed });
 	selectionRange = {
 		startIndex: si,
 		endIndex: ei,

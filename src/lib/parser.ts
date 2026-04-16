@@ -188,13 +188,26 @@ export async function parseFitFile(buffer: ArrayBuffer): Promise<WorkoutData> {
 		const endTs = lap.timestamp ? new Date(lap.timestamp).getTime() : null;
 
 		const startElapsed = startTs != null ? (startTs - firstTimestamp) / 1000 : (i > 0 && fitLaps[i - 1].timestamp ? (new Date(fitLaps[i - 1].timestamp).getTime() - firstTimestamp) / 1000 : 0);
-		const endElapsed = endTs != null ? (endTs - firstTimestamp) / 1000 : (i < fitLaps.length - 1 && fitLaps[i + 1].start_time ? (new Date(fitLaps[i + 1].start_time).getTime() - firstTimestamp) / 1000 : dataPoints[dataPoints.length - 1].elapsed);
+		const duration = lap.total_elapsed_time ?? lap.total_timer_time ?? null;
+
+		// Compute endElapsed: prefer startElapsed + duration (reliable), fall back to
+		// timestamp-based calculation. Some devices set lap.timestamp == lap.start_time,
+		// making the timestamp-based endElapsed identical to startElapsed.
+		let endElapsed: number;
+		const tsEndElapsed = endTs != null ? (endTs - firstTimestamp) / 1000 : null;
+		if (duration != null && (tsEndElapsed == null || tsEndElapsed <= startElapsed)) {
+			endElapsed = startElapsed + duration;
+		} else if (tsEndElapsed != null) {
+			endElapsed = tsEndElapsed;
+		} else {
+			endElapsed = i < fitLaps.length - 1 && fitLaps[i + 1].start_time ? (new Date(fitLaps[i + 1].start_time).getTime() - firstTimestamp) / 1000 : dataPoints[dataPoints.length - 1].elapsed;
+		}
 
 		laps.push({
 			number: i + 1,
 			startElapsed: Math.max(0, startElapsed),
 			endElapsed: Math.max(startElapsed, endElapsed),
-			duration: lap.total_elapsed_time ?? lap.total_timer_time ?? (endElapsed - startElapsed),
+			duration: duration ?? (endElapsed - startElapsed),
 			distance: lap.total_distance ?? null,
 			trigger: (lap.lap_trigger ?? '').toLowerCase().replace(/_/g, ' '),
 		});
