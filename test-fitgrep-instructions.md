@@ -5,7 +5,7 @@
 - Node.js 24+ installed
 - Playwright Chromium browser installed
 
-Playwright is already included as a dev dependency. Install the browser should be installed also, if not:
+Playwright is already included as a dev dependency. The browser should be installed also, if not:
 
 ```bash
 cd /home/shipadmin/fitgrep
