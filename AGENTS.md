@@ -55,7 +55,20 @@ src/
 
 ## Important Gotchas
 
-- **fit-file-parser patch**: The library silently drops Garmin record fields it doesn't recognize (undocumented in the FIT SDK). We use `patch-package` (`patches/fit-file-parser+2.3.3.patch`) to add field definitions for: field 108 (respiration_rate, uint16, scale 100), field 136 (wrist_heart_rate, uint16), field 144 (external_heart_rate, uint8). The patch runs on `npm install` via the `postinstall` script. If you ever update `fit-file-parser`, check the patch still applies.
+- **fit-file-parser patch**: The library silently drops Garmin record fields it doesn't recognize (undocumented in the FIT SDK). We use `patch-package` (`patches/fit-file-parser+2.3.3.patch`) to add field definitions for these undocumented record message fields:
+  - field 90 (performance_condition, sint8)
+  - field 99 (respiration_rate, uint8)
+  - field 108 (enhanced_respiration_rate, uint16, scale 100)
+  - field 116 (current_stress, uint16, scale 100)
+  - field 136 (wrist_heart_rate, uint8)
+  - field 137 (stamina_potential, uint16, scale 10)
+  - field 138 (stamina, uint16, scale 10)
+  - field 139 (core_temperature, uint16, scale 100)
+  - field 140 (grade_adjusted_speed, uint32, scale 1000)
+  - field 143 (body_battery, uint8)
+  - field 144 (external_heart_rate, uint8)
+  
+  Sources: [fit-parser PR #45](https://github.com/jimmykane/fit-parser/pull/45) and [Gadgetbridge GlobalFITMessage.java](https://codeberg.org/Freeyourgadget/Gadgetbridge/src/tag/0.88.0/app/src/main/java/nodomain/freeyourgadget/gadgetbridge/service/devices/garmin/fit/GlobalFITMessage.java). The patch runs on `npm install` via the `postinstall` script. If you ever update `fit-file-parser`, check the patch still applies.
 
 - `parseFitFile()` is **async** (returns Promise) — always `await` it
 - `bind:this` variables (like chart/map containers) trigger Svelte warnings about `$state` — these are false positives, don't add `$state` to them

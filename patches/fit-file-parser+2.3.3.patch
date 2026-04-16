@@ -1,25 +1,83 @@
 diff --git a/node_modules/fit-file-parser/dist/cjs/fit.js b/node_modules/fit-file-parser/dist/cjs/fit.js
-index 8cc0af9..8e65d5f 100644
+index 8cc0af9..769dc96 100644
 --- a/node_modules/fit-file-parser/dist/cjs/fit.js
 +++ b/node_modules/fit-file-parser/dist/cjs/fit.js
-@@ -3004,6 +3004,28 @@ exports.FIT = {
+@@ -3004,6 +3004,86 @@ exports.FIT = {
                  offset: 0,
                  units: 'percent',
              },
 +            // Undocumented Garmin fields (not in FIT SDK Profile.xlsx)
-+            108: {
++            // Sources: https://github.com/jimmykane/fit-parser/pull/45
++            //          https://codeberg.org/Freeyourgadget/Gadgetbridge/src/tag/0.88.0/app/src/main/java/nodomain/freeyourgadget/gadgetbridge/service/devices/garmin/fit/GlobalFITMessage.java
++            90: {
++                field: 'performance_condition',
++                type: 'sint8',
++                scale: null,
++                offset: 0,
++                units: '',
++            },
++            99: {
 +                field: 'respiration_rate',
++                type: 'uint8',
++                scale: null,
++                offset: 0,
++                units: 'brpm',
++            },
++            108: {
++                field: 'enhanced_respiration_rate',
 +                type: 'uint16',
 +                scale: 100,
 +                offset: 0,
 +                units: 'brpm',
 +            },
++            116: {
++                field: 'current_stress',
++                type: 'uint16',
++                scale: 100,
++                offset: 0,
++                units: '',
++            },
 +            136: {
 +                field: 'wrist_heart_rate',
-+                type: 'uint16',
++                type: 'uint8',
 +                scale: null,
 +                offset: 0,
 +                units: 'bpm',
++            },
++            137: {
++                field: 'stamina_potential',
++                type: 'uint16',
++                scale: 10,
++                offset: 0,
++                units: 'percent',
++            },
++            138: {
++                field: 'stamina',
++                type: 'uint16',
++                scale: 10,
++                offset: 0,
++                units: 'percent',
++            },
++            139: {
++                field: 'core_temperature',
++                type: 'uint16',
++                scale: 100,
++                offset: 0,
++                units: 'C',
++            },
++            140: {
++                field: 'grade_adjusted_speed',
++                type: 'uint32',
++                scale: 1000,
++                offset: 0,
++                units: 'm/s',
++            },
++            143: {
++                field: 'body_battery',
++                type: 'uint8',
++                scale: null,
++                offset: 0,
++                units: 'percent',
 +            },
 +            144: {
 +                field: 'external_heart_rate',
@@ -32,27 +90,85 @@ index 8cc0af9..8e65d5f 100644
          285: {
              name: 'jump',
 diff --git a/node_modules/fit-file-parser/dist/fit.js b/node_modules/fit-file-parser/dist/fit.js
-index 3dc908d..828d74c 100644
+index 3dc908d..407af19 100644
 --- a/node_modules/fit-file-parser/dist/fit.js
 +++ b/node_modules/fit-file-parser/dist/fit.js
-@@ -3001,6 +3001,28 @@ export const FIT = {
+@@ -3001,6 +3001,86 @@ export const FIT = {
                  offset: 0,
                  units: 'percent',
              },
 +            // Undocumented Garmin fields (not in FIT SDK Profile.xlsx)
-+            108: {
++            // Sources: https://github.com/jimmykane/fit-parser/pull/45
++            //          https://codeberg.org/Freeyourgadget/Gadgetbridge/src/tag/0.88.0/app/src/main/java/nodomain/freeyourgadget/gadgetbridge/service/devices/garmin/fit/GlobalFITMessage.java
++            90: {
++                field: 'performance_condition',
++                type: 'sint8',
++                scale: null,
++                offset: 0,
++                units: '',
++            },
++            99: {
 +                field: 'respiration_rate',
++                type: 'uint8',
++                scale: null,
++                offset: 0,
++                units: 'brpm',
++            },
++            108: {
++                field: 'enhanced_respiration_rate',
 +                type: 'uint16',
 +                scale: 100,
 +                offset: 0,
 +                units: 'brpm',
 +            },
++            116: {
++                field: 'current_stress',
++                type: 'uint16',
++                scale: 100,
++                offset: 0,
++                units: '',
++            },
 +            136: {
 +                field: 'wrist_heart_rate',
-+                type: 'uint16',
++                type: 'uint8',
 +                scale: null,
 +                offset: 0,
 +                units: 'bpm',
++            },
++            137: {
++                field: 'stamina_potential',
++                type: 'uint16',
++                scale: 10,
++                offset: 0,
++                units: 'percent',
++            },
++            138: {
++                field: 'stamina',
++                type: 'uint16',
++                scale: 10,
++                offset: 0,
++                units: 'percent',
++            },
++            139: {
++                field: 'core_temperature',
++                type: 'uint16',
++                scale: 100,
++                offset: 0,
++                units: 'C',
++            },
++            140: {
++                field: 'grade_adjusted_speed',
++                type: 'uint32',
++                scale: 1000,
++                offset: 0,
++                units: 'm/s',
++            },
++            143: {
++                field: 'body_battery',
++                type: 'uint8',
++                scale: null,
++                offset: 0,
++                units: 'percent',
 +            },
 +            144: {
 +                field: 'external_heart_rate',

@@ -28,6 +28,14 @@ export const FIELD_CONFIG: Record<string, Partial<FieldInfo>> = {
 	external_heart_rate: { label: 'External HR', unit: 'bpm', scale: 1, defaultEnabled: true, color: '#ff6b6b' },
 	wrist_heart_rate: { label: 'Wrist HR', unit: 'bpm', scale: 1, defaultEnabled: true, color: '#ffa07a' },
 	respiration_rate: { label: 'Respiration Rate', unit: 'brpm', scale: 1, defaultEnabled: false },
+	enhanced_respiration_rate: { label: 'Respiration Rate (Enhanced)', unit: 'brpm', scale: 0.01, defaultEnabled: false },
+	performance_condition: { label: 'Performance Condition', unit: '', scale: 1, defaultEnabled: true, color: '#2ecc71' },
+	stamina: { label: 'Stamina', unit: '%', scale: 0.1, defaultEnabled: true, color: '#e67e22' },
+	stamina_potential: { label: 'Stamina Potential', unit: '%', scale: 0.1, defaultEnabled: true, color: '#f39c12' },
+	grade_adjusted_speed: { label: 'GAP', unit: 'km/h', scale: 3.6, defaultEnabled: false, color: '#1abc9c' },
+	body_battery: { label: 'Body Battery', unit: '%', scale: 1, defaultEnabled: true, color: '#9b59b6' },
+	current_stress: { label: 'Stress', unit: '', scale: 0.01, defaultEnabled: false },
+	core_temperature: { label: 'Core Temp', unit: '°C', scale: 0.01, defaultEnabled: false },
 };
 
 /** Color palette for non-reserved fields (no red/blue/gray — those are reserved for HR/speed/altitude) */

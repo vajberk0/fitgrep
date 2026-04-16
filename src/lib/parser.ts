@@ -75,12 +75,18 @@ export async function parseFitFile(buffer: ArrayBuffer): Promise<WorkoutData> {
 
 	// Speed field keys that should be converted to pace for running
 	const speedKeys = new Set(['enhanced_speed', 'speed']);
+	// GAP (grade-adjusted pace) fields: speed in m/s, converted differently
+	const gapKeys = new Set(['grade_adjusted_speed']);
 
 	// If running, update field config for speed fields → pace
 	if (isRunning) {
 		for (const field of availableFields) {
 			if (speedKeys.has(field.key)) {
 				field.label = 'Pace';
+				field.unit = 'min/km';
+				field.inverted = true;
+			} else if (gapKeys.has(field.key)) {
+				field.label = 'GAP';
 				field.unit = 'min/km';
 				field.inverted = true;
 			}
@@ -108,6 +114,8 @@ export async function parseFitFile(buffer: ArrayBuffer): Promise<WorkoutData> {
 				// Convert speed (km/h) to pace (min/km) for running workouts
 				if (isRunning && speedKeys.has(field.key)) {
 					val = val > 0.5 ? 60 / val : NaN; // guard against zero/very low speed
+				} else if (isRunning && gapKeys.has(field.key)) {
+					val = val > 0.5 ? 60 / val : NaN; // grade-adjusted speed → pace
 				}
 				if (!isNaN(val)) {
 					dp[field.key] = val;
