@@ -20,6 +20,7 @@
 		resizeObserver.observe(chartEl);
 
 		chart.on('datazoom', () => {
+			console.log('[datazoom] fired, suppressed:', suppressingZoomEvents);
 			if (suppressingZoomEvents) return;
 			if (!store.data || !chart) return;
 
@@ -35,6 +36,8 @@
 			const totalRecords = records.length;
 			const startIdx = Math.floor((start / 100) * totalRecords);
 			const endIdx = Math.ceil((end / 100) * totalRecords);
+
+			console.log('[datazoom] unsuppressed', { start, end, startIdx, endIdx, selectedLap: store.selectedLap });
 
 			// User manually zoomed — deselect any selected lap pill
 			if (store.selectedLap !== null) {
@@ -76,6 +79,7 @@
 		const enabledInfos = store.enabledFieldInfos;
 		const records = store.data.records;
 		const laps = store.data.laps;
+		console.log('[chart $effect] rebuilding chart');
 
 		if (records.length === 0 || enabledInfos.length === 0) {
 			suppressingZoomEvents = true;
@@ -280,11 +284,13 @@
 		}
 		// Zoom chart to match the new selection range
 		const sel = store.selectionRange;
+		console.log('[handleLapClick]', { lapNumber, sel, selectedLap: store.selectedLap });
 		if (sel && store.data) {
 			const totalRecords = store.data.records.length;
 			if (totalRecords > 0) {
 				const startPct = (sel.startIndex / totalRecords) * 100;
 				const endPct = (sel.endIndex / totalRecords) * 100;
+				console.log('[handleLapClick] zoom', { startPct, endPct, totalRecords });
 				zoomChartToRange(startPct, endPct);
 			}
 		}
