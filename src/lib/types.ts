@@ -66,6 +66,8 @@ export interface LapInfo {
 	duration: number;
 	/** Distance in meters, if available */
 	distance: number | null;
+	/** Cumulative distance (m) at lap start, from the record stream — use this to plot lap boundaries on a distance x-axis */
+	startDistance?: number;
 	/** Trigger type (e.g. 'manual', 'distance', 'time') */
 	trigger: string;
 }

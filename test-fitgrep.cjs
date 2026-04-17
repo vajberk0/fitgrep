@@ -14,7 +14,7 @@ const path = require('path');
   page.on('pageerror', err => console.error(`[PAGE ERROR] ${err.message}`));
 
   // Navigate to the app
-  await page.goto('https://fitgrep.je.mk/', { waitUntil: 'load', timeout: 30000 });
+  await page.goto('http://localhost:5173/', { waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(3000); // wait for app to initialize
 
   // Screenshot before

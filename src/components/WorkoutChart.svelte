@@ -8,7 +8,9 @@
 	let chart: EChartsType | null = $state(null);
 	let resizeObserver: ResizeObserver | null = null;
 	let chartReady = $state(false);
-	let hasDistance = $state(false);
+	// Derived — true when the loaded workout has a distance stream.
+	// Used to gate the Time/Distance toggle and x-axis mode.
+	const hasDistance = $derived(store.data?.records?.[0]?.distance != null);
 
 	// Guard flag: suppress datazoom events during programmatic zoom changes
 	let suppressingZoomEvents = false;
@@ -16,6 +18,9 @@
 	onMount(async () => {
 		const echarts = await import('echarts');
 		chart = echarts.init(chartEl, undefined, { renderer: 'canvas' });
+		// Expose instance on the DOM node for tests (stable across ECharts versions,
+		// unlike scanning enumerable properties for one with a getOption method).
+		(chartEl as any).__echarts = chart;
 		chartReady = true;
 		resizeObserver = new ResizeObserver(() => chart?.resize());
 		resizeObserver.observe(chartEl);
@@ -98,8 +103,10 @@
 			return;
 		}
 
-		// Check if distance field is available in records
-		hasDistance = records.length > 0 && records[0].distance != null;
+		// Shared helpers for x-axis basis. Once distance mode is decided, the rest of
+		// the build just calls fmtX() and reads useDistance — no more scattered ternaries.
+		const useDistance = axis === 'distance' && hasDistance;
+		const fmtX = (v: number) => (useDistance ? formatDistance(v) : formatElapsed(v));
 
 		// Build Y-axes: each enabled field gets its own axis (all hidden, so no visual clutter)
 		const axisMap = new Map<string, number>();
@@ -115,7 +122,7 @@
 			type: 'line' as const,
 			data: records.map((r) => {
 				const val = r[field.key];
-				const xVal = axis === 'distance' && r.distance != null ? r.distance : r.elapsed;
+				const xVal = useDistance && r.distance != null ? r.distance : r.elapsed;
 				return val != null ? [xVal, val] : [xVal, null];
 			}),
 			yAxisIndex: axisMap.get(field.key) ?? 0,
@@ -129,20 +136,12 @@
 			connectNulls: false,
 		}));
 
-		// Build markLines: use lap boundaries if available, otherwise fall back to 5-min intervals
+		// Build markLines: use lap boundaries if available, otherwise fall back to 5-min intervals.
+		// lap.startDistance is populated upstream in parser.ts — no per-rebuild lookup needed.
 		const markLineData: any[] = [];
 		if (laps.length > 0) {
-			// Compute cumulative distance at each lap start (for distance-axis mark lines)
-			const lapCumulativeDistances = laps.map((lap) => {
-				// Find the record at the lap's start elapsed time
-				let idx = 0;
-				for (let j = 0; j < records.length; j++) {
-					if (records[j].elapsed >= lap.startElapsed) { idx = j; break; }
-				}
-				return records[idx]?.distance ?? null;
-			});
 			for (let i = 1; i < laps.length; i++) {
-				const lapXVal = axis === 'distance' && lapCumulativeDistances[i] != null ? lapCumulativeDistances[i] : laps[i].startElapsed;
+				const lapXVal = useDistance && laps[i].startDistance != null ? laps[i].startDistance! : laps[i].startElapsed;
 				markLineData.push({
 					xAxis: lapXVal,
 					label: {
@@ -159,15 +158,14 @@
 				});
 			}
 		} else {
-			const maxVal = axis === 'distance' && hasDistance
-				? records[records.length - 1].distance!
-				: records[records.length - 1].elapsed;
-			const interval = axis === 'distance' && hasDistance ? 500 : 300;
+			const lastRec = records[records.length - 1];
+			const maxVal = useDistance ? lastRec.distance! : lastRec.elapsed;
+			const interval = useDistance ? 500 : 300;
 			for (let t = interval; t < maxVal; t += interval) {
 				markLineData.push({
 					xAxis: t,
 					label: {
-						formatter: axis === 'distance' && hasDistance ? formatDistance(t) : formatElapsed(t),
+						formatter: fmtX(t),
 						position: 'insideStartTop' as const,
 						fontSize: 10,
 						color: '#999',
@@ -207,7 +205,7 @@
 				formatter: (params: any[]) => {
 					if (!params || params.length === 0) return '';
 					const axisVal = params[0].axisValue;
-					let html = `<div style="font-weight:600;margin-bottom:4px">${axis === 'distance' && hasDistance ? formatDistance(axisVal) : formatElapsed(axisVal)}</div>`;
+					let html = `<div style="font-weight:600;margin-bottom:4px">${fmtX(axisVal)}</div>`;
 					for (const p of params) {
 						const yVal = Array.isArray(p.value) ? p.value[1] : p.value;
 						if (yVal != null) {
@@ -226,13 +224,13 @@
 			},
 			xAxis: {
 				type: 'value',
-				name: axis === 'distance' && hasDistance ? 'Distance' : 'Time',
+				name: useDistance ? 'Distance' : 'Time',
 				nameLocation: 'center',
 				nameGap: 30,
 				min: 'dataMin',
 				max: 'dataMax',
 				axisLabel: {
-					formatter: (val: number) => (axis === 'distance' && hasDistance ? formatDistance(val) : formatElapsed(val)),
+					formatter: fmtX,
 					fontSize: 11,
 				},
 				axisLine: { lineStyle: { color: '#ccc' } },
@@ -265,7 +263,7 @@
 						lineStyle: { color: '#3498db' },
 						areaStyle: { color: 'rgba(52, 152, 219, 0.1)' },
 					},
-					labelFormatter: (val: number) => (axis === 'distance' && hasDistance ? formatDistance(val) : formatElapsed(val)),
+					labelFormatter: fmtX,
 				},
 				{
 					type: 'inside',
@@ -350,11 +348,11 @@
 		<div class="axis-toggle">
 			<button
 				class="axis-btn {store.chartAxis === 'time' ? 'active' : ''}"
-			onclick={() => store.setChartAxis('time')}
+				onclick={() => store.setChartAxis('time')}
 			>Time</button>
 			<button
 				class="axis-btn {store.chartAxis === 'distance' ? 'active' : ''}"
-			onclick={() => store.setChartAxis('distance')}
+				onclick={() => store.setChartAxis('distance')}
 			>Distance</button>
 		</div>
 	{/if}

@@ -41,17 +41,13 @@ const path = require('path');
   await page.waitForTimeout(8000);
 
   // ─── Test: Verify lap mark lines in TIME mode ───
+  // The WorkoutChart component exposes its ECharts instance as `chartEl.__echarts`
+  // specifically for tests (avoids scanning enumerable props for getOption, which
+  // was fragile across ECharts versions).
   console.log('\n=== TIME AXIS MODE ===');
   const timeResult = await page.evaluate(() => {
     const chartEl = document.querySelector('.chart-el');
-    // Find the ECharts instance by scanning DOM properties
-    let chart = null;
-    for (const key of Object.keys(chartEl)) {
-      if (chartEl[key] && typeof chartEl[key].getOption === 'function') {
-        chart = chartEl[key];
-        break;
-      }
-    }
+    const chart = chartEl && chartEl.__echarts;
     if (!chart) return { error: 'No chart found' };
 
     const option = chart.getOption();
@@ -78,13 +74,7 @@ const path = require('path');
   console.log('\n=== DISTANCE AXIS MODE ===');
   const distanceResult = await page.evaluate(() => {
     const chartEl = document.querySelector('.chart-el');
-    let chart = null;
-    for (const key of Object.keys(chartEl)) {
-      if (chartEl[key] && typeof chartEl[key].getOption === 'function') {
-        chart = chartEl[key];
-        break;
-      }
-    }
+    const chart = chartEl && chartEl.__echarts;
     if (!chart) return { error: 'No chart found' };
 
     const option = chart.getOption();

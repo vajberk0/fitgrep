@@ -184,9 +184,12 @@ export async function parseFitFile(buffer: ArrayBuffer): Promise<WorkoutData> {
 		if (summary.maxSpeed != null) summary.maxSpeed *= 3.6;
 	}
 
-	// Extract lap data
+	// Extract lap data. Since both laps and dataPoints are time-ordered, we walk
+	// records with a monotonic cursor to attach cumulative distance at each lap
+	// start in O(n + m) rather than O(n·m).
 	const laps: LapInfo[] = [];
 	const fitLaps: any[] = raw.laps ?? [];
+	let recordCursor = 0;
 	for (let i = 0; i < fitLaps.length; i++) {
 		const lap = fitLaps[i];
 		const startTs = lap.start_time ? new Date(lap.start_time).getTime() : null;
@@ -208,12 +211,20 @@ export async function parseFitFile(buffer: ArrayBuffer): Promise<WorkoutData> {
 			endElapsed = i < fitLaps.length - 1 && fitLaps[i + 1].start_time ? (new Date(fitLaps[i + 1].start_time).getTime() - firstTimestamp) / 1000 : dataPoints[dataPoints.length - 1].elapsed;
 		}
 
+		// Advance cursor to the first record at or after this lap's start
+		const clampedStart = Math.max(0, startElapsed);
+		while (recordCursor < dataPoints.length && dataPoints[recordCursor].elapsed < clampedStart) {
+			recordCursor++;
+		}
+		const startDistance = dataPoints[recordCursor]?.distance;
+
 		laps.push({
 			number: i + 1,
-			startElapsed: Math.max(0, startElapsed),
+			startElapsed: clampedStart,
 			endElapsed: Math.max(startElapsed, endElapsed),
 			duration: duration ?? (endElapsed - startElapsed),
 			distance: lap.total_distance ?? null,
+			startDistance,
 			trigger: (lap.lap_trigger ?? '').toLowerCase().replace(/_/g, ' '),
 		});
 	}
