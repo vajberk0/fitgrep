@@ -10,6 +10,17 @@
 		if (Math.abs(val) >= 10) return val.toFixed(1);
 		return val.toFixed(2);
 	}
+
+	function fmtEf(val: number | null): string {
+		if (val == null) return '—';
+		return val.toFixed(2);
+	}
+
+	function fmtDecoupling(val: number | null): string {
+		if (val == null) return '—';
+		const sign = val > 0 ? '+' : '';
+		return `${sign}${val.toFixed(1)}%`;
+	}
 </script>
 
 {#if store.data && store.enabledFieldInfos.length > 0}
@@ -65,6 +76,49 @@
 				</tbody>
 			</table>
 		</div>
+
+		<!-- Efficiency Factor & Decoupling -->
+		{#if store.efficiencyMetrics.pwHr || store.efficiencyMetrics.paHr}
+			<div class="efficiency-section">
+				<div class="efficiency-header">Aerobic Efficiency</div>
+				{#if store.efficiencyMetrics.pwHr}
+					{@const m = store.efficiencyMetrics.pwHr}
+					<div class="efficiency-row">
+						<div class="efficiency-label">
+							EF (Pw:Hr)
+							<span class="efficiency-unit">W/bpm</span>
+						</div>
+						<div class="efficiency-values">
+							<span class="efficiency-value">{fmtEf(m.ef)}</span>
+							{#if m.decoupling != null}
+								<span class="efficiency-sep">|</span>
+								<span class="efficiency-decoupling" class:decoupling-bad={m.decoupling > 5} class:decoupling-good={m.decoupling <= 5 && m.decoupling >= -5}>
+									{fmtDecoupling(m.decoupling)}
+								</span>
+							{/if}
+						</div>
+					</div>
+				{/if}
+				{#if store.efficiencyMetrics.paHr}
+					{@const m = store.efficiencyMetrics.paHr}
+					<div class="efficiency-row">
+						<div class="efficiency-label">
+							EF (Pa:Hr)
+							<span class="efficiency-unit">m/min/bpm</span>
+						</div>
+						<div class="efficiency-values">
+							<span class="efficiency-value">{fmtEf(m.ef)}</span>
+							{#if m.decoupling != null}
+								<span class="efficiency-sep">|</span>
+								<span class="efficiency-decoupling" class:decoupling-bad={m.decoupling > 5} class:decoupling-good={m.decoupling <= 5 && m.decoupling >= -5}>
+									{fmtDecoupling(m.decoupling)}
+								</span>
+							{/if}
+						</div>
+					</div>
+				{/if}
+			</div>
+		{/if}
 	</div>
 {/if}
 
@@ -166,6 +220,83 @@
 
 	.col-avg {
 		font-weight: 700;
+		color: var(--text);
+	}
+
+	/* Efficiency Factor & Decoupling section */
+	.efficiency-section {
+		border-top: 1px solid var(--border-color);
+		padding: 0.6rem 1rem;
+		background: var(--bg);
+	}
+
+	.efficiency-header {
+		font-size: 0.7rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--text-muted);
+		margin-bottom: 0.4rem;
+	}
+
+	.efficiency-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0.35rem 0;
+		font-size: 0.85rem;
+		border-bottom: 1px solid var(--border-color);
+	}
+
+	.efficiency-row:last-child {
+		border-bottom: none;
+	}
+
+	.efficiency-label {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-weight: 600;
+		color: var(--text);
+	}
+
+	.efficiency-unit {
+		font-size: 0.7rem;
+		font-weight: 400;
+		color: var(--text-muted);
+	}
+
+	.efficiency-values {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.efficiency-value {
+		font-weight: 700;
+		color: var(--accent);
+	}
+
+	.efficiency-sep {
+		color: var(--border-color);
+		font-weight: 300;
+	}
+
+	.efficiency-decoupling {
+		font-weight: 600;
+		font-size: 0.8rem;
+	}
+
+	.decoupling-good {
+		color: var(--positive, #27ae60);
+	}
+
+	.decoupling-bad {
+		color: var(--negative, #e74c3c);
+	}
+
+	.efficiency-decoupling:not(.decoupling-good):not(.decoupling-bad) {
 		color: var(--text);
 	}
 </style>

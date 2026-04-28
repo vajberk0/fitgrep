@@ -1,5 +1,5 @@
 import type { WorkoutData, FieldInfo, SelectionRange, FieldStats } from './types';
-import { calcFieldStats } from './stats';
+import { calcFieldStats, calcEfficiencyFactor, calcDecoupling, calcFieldAverage, findHrField } from './stats';
 import { getStoredFiles, type StoredFileMeta } from './storage';
 import { saveFieldPreferences, loadFieldPreferences, saveLastFile, clearLastFile } from './preferences';
 
@@ -43,6 +43,60 @@ function getSelectionDuration(): number {
 	const start = workoutData.records[Math.min(startIdx, workoutData.records.length - 1)]?.elapsed ?? 0;
 	const end = workoutData.records[Math.min(endIdx - 1, workoutData.records.length - 1)]?.elapsed ?? 0;
 	return end - start;
+}
+
+interface EfficiencyMetric {
+	ef: number | null;
+	decoupling: number | null;
+}
+
+function getEfficiencyMetrics(): { pwHr: EfficiencyMetric | null; paHr: EfficiencyMetric | null } {
+	const result = { pwHr: null as EfficiencyMetric | null, paHr: null as EfficiencyMetric | null };
+
+	if (!workoutData || workoutData.records.length === 0) return result;
+
+	const startIdx = selectionRange?.startIndex ?? 0;
+	const endIdx = selectionRange?.endIndex ?? workoutData.records.length;
+	const records = workoutData.records;
+	const availableFields = workoutData.availableFields;
+
+	// Find HR field with data in range
+	const hrField = findHrField(records, startIdx, endIdx);
+	if (!hrField) return result;
+
+	// Check for power field
+	const powerField = availableFields.find(f => f.key === 'power');
+	const powerAvg = powerField ? calcFieldAverage(records, 'power', startIdx, endIdx) : null;
+	const hasPower = powerAvg != null && powerAvg > 0;
+
+	if (hasPower) {
+		const ef = calcEfficiencyFactor(records, 'power', hrField, startIdx, endIdx);
+		const decoupling = calcDecoupling(records, 'power', hrField, startIdx, endIdx);
+		result.pwHr = { ef, decoupling };
+	}
+
+	// Check for pace/speed field: prefer enhanced_speed, then speed, then grade_adjusted_speed
+	const speedKeys = ['enhanced_speed', 'speed', 'grade_adjusted_speed'];
+	let paceKey: string | null = null;
+	let isPaceField = false;
+	for (const key of speedKeys) {
+		const field = availableFields.find(f => f.key === key);
+		if (!field) continue;
+		const avg = calcFieldAverage(records, key, startIdx, endIdx);
+		if (avg != null && avg > 0) {
+			paceKey = key;
+			isPaceField = field.unit === 'min/km';
+			break;
+		}
+	}
+
+	if (paceKey) {
+		const ef = calcEfficiencyFactor(records, paceKey, hrField, startIdx, endIdx, isPaceField);
+		const decoupling = calcDecoupling(records, paceKey, hrField, startIdx, endIdx, isPaceField);
+		result.paHr = { ef, decoupling };
+	}
+
+	return result;
 }
 
 function selectLap(lapNumber: number | null) {
@@ -169,6 +223,7 @@ export const store = {
 	get enabledFieldInfos() { return getEnabledFieldInfos(); },
 	get selectionStats() { return getSelectionStats(); },
 	get selectionDuration() { return getSelectionDuration(); },
+	get efficiencyMetrics() { return getEfficiencyMetrics(); },
 	get storedFiles() { return storedFiles; },
 
 	setWorkoutData,
