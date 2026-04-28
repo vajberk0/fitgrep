@@ -61,9 +61,11 @@ node test-lap-lines.cjs    # regression: lap mark line positioning on distance a
 
 See `test-fitgrep-instructions.md` for selectors and workflow.
 
-## Deploy
+## Bug-fix workflow
 
-GitHub Pages via `.github/workflows/deploy.yml`. Source must be set to "GitHub Actions" in repo settings. **Commit and push after changes** — that's the deploy trigger.
+1. **Reproduce first.** If the user provides or references a `.fit` file, run the app with it (`npm run dev` + upload, or a Playwright test script) to confirm the bug before touching code.
+2. **Fix, then re-test.** Run the same reproduction steps after the change to verify the fix. Use `test-fitgrep.cjs` / `test-lap-lines.cjs` for regression checks.
+3. **Push automatically.** If tests pass, `git commit` and `git push` immediately — GitHub Pages deploys on push.
 
 ## Roadmap
 
