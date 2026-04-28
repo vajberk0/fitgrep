@@ -123,8 +123,8 @@
 			data: records.map((r) => {
 				const val = r[field.key];
 				const xVal = useDistance && r.distance != null ? r.distance : r.elapsed;
-				return val != null ? [xVal, val] : [xVal, null];
-			}),
+				return [xVal, val];
+			}).filter((d) => d[1] != null),
 			yAxisIndex: axisMap.get(field.key) ?? 0,
 			symbol: 'none',
 			sampling: 'lttb' as const,
@@ -133,7 +133,6 @@
 			emphasis: {
 				lineStyle: { width: 3 },
 			},
-			connectNulls: true,
 		}));
 
 		// Build markLines: use lap boundaries if available, otherwise fall back to 5-min intervals.
