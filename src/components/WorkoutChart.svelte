@@ -133,7 +133,7 @@
 			emphasis: {
 				lineStyle: { width: 3 },
 			},
-			connectNulls: false,
+			connectNulls: true,
 		}));
 
 		// Build markLines: use lap boundaries if available, otherwise fall back to 5-min intervals.
