@@ -1,7 +1,12 @@
 import type { WorkoutSummary } from './types';
 
-const META_KEY = 'fitgrep_files_meta';
-const FILE_PREFIX = 'fitgrep_file:';
+const DB_NAME = 'fitgrep';
+const DB_VERSION = 1;
+const STORE = 'files';
+
+// Legacy localStorage keys — migrated into IndexedDB on first use, then removed.
+const LEGACY_META_KEY = 'fitgrep_files_meta';
+const LEGACY_FILE_PREFIX = 'fitgrep_file:';
 
 export interface StoredFileMeta {
 	filename: string;
@@ -12,16 +17,98 @@ export interface StoredFileMeta {
 	savedAt: string; // ISO
 }
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-	const bytes = new Uint8Array(buffer);
-	let binary = '';
-	const chunkSize = 8192;
-	for (let i = 0; i < bytes.length; i += chunkSize) {
-		const chunk = bytes.subarray(i, i + chunkSize);
-		binary += String.fromCharCode(...chunk);
-	}
-	return btoa(binary);
+interface StoredEntry {
+	meta: StoredFileMeta;
+	buffer: ArrayBuffer;
 }
+
+// ─── IndexedDB plumbing ───────────────────────────────────────────────────
+// FIT files can be several MB; localStorage's ~5 MB quota (plus ~33% base64
+// inflation) caused QuotaExceededError once a few workouts were saved.
+// IndexedDB stores ArrayBuffers natively with a much larger, dynamic quota.
+
+let dbPromise: Promise<IDBDatabase | null> | null = null;
+let memoryFallback: Map<string, StoredEntry> | null = null; // no IndexedDB → session-only
+
+function getDb(): Promise<IDBDatabase | null> {
+	if (!dbPromise) {
+		dbPromise = new Promise((resolve) => {
+			if (typeof indexedDB === 'undefined') {
+				memoryFallback = new Map();
+				resolve(null);
+				return;
+			}
+			const req = indexedDB.open(DB_NAME, DB_VERSION);
+			req.onupgradeneeded = () => {
+				const db = req.result;
+				if (!db.objectStoreNames.contains(STORE)) {
+					db.createObjectStore(STORE, { keyPath: 'meta.filename' });
+				}
+			};
+			req.onsuccess = () => resolve(req.result);
+			req.onerror = () => {
+				memoryFallback = new Map();
+				resolve(null);
+			};
+			req.onblocked = () => {
+				memoryFallback = new Map();
+				resolve(null);
+			};
+		});
+	}
+	return dbPromise;
+}
+
+function requestToPromise<T>(req: IDBRequest<T>): Promise<T> {
+	return new Promise((resolve, reject) => {
+		req.onsuccess = () => resolve(req.result);
+		req.onerror = () => reject(req.error);
+	});
+}
+
+async function runStore<T>(
+	mode: IDBTransactionMode,
+	fn: (store: IDBObjectStore) => IDBRequest<T>
+): Promise<T | null> {
+	const db = await getDb();
+	if (!db) return null;
+	const tx = db.transaction(STORE, mode);
+	return requestToPromise(fn(tx.objectStore(STORE)));
+}
+
+// ─── Legacy localStorage migration ────────────────────────────────────────
+
+let migrated = false;
+
+async function migrateLegacy(): Promise<void> {
+	if (migrated || typeof localStorage === 'undefined') return;
+	migrated = true;
+	try {
+		const raw = localStorage.getItem(LEGACY_META_KEY);
+		if (!raw) return;
+		const metas = JSON.parse(raw) as StoredFileMeta[];
+		const db = await getDb();
+		for (const meta of metas) {
+			const base64 = localStorage.getItem(LEGACY_FILE_PREFIX + meta.filename);
+			if (!base64) continue;
+			const buffer = base64ToArrayBuffer(base64);
+			if (db) {
+				await runStore('readwrite', (s) => s.put({ meta, buffer }));
+			} else {
+				memoryFallback?.set(meta.filename, { meta, buffer });
+			}
+		}
+		// Only clean up after a successful move
+		localStorage.removeItem(LEGACY_META_KEY);
+		for (const meta of metas) {
+			localStorage.removeItem(LEGACY_FILE_PREFIX + meta.filename);
+		}
+	} catch (err) {
+		console.warn('Could not migrate previously saved workouts:', err);
+	}
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────
 
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
 	const binary = atob(base64);
@@ -32,14 +119,8 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
 	return bytes.buffer;
 }
 
-export function getStoredFiles(): StoredFileMeta[] {
-	try {
-		const raw = localStorage.getItem(META_KEY);
-		if (!raw) return [];
-		return JSON.parse(raw) as StoredFileMeta[];
-	} catch {
-		return [];
-	}
+function byNewest(a: StoredFileMeta, b: StoredFileMeta): number {
+	return b.savedAt.localeCompare(a.savedAt);
 }
 
 function isDuplicate(a: StoredFileMeta, b: StoredFileMeta): boolean {
@@ -48,9 +129,18 @@ function isDuplicate(a: StoredFileMeta, b: StoredFileMeta): boolean {
 	return nameMatch && timeMatch;
 }
 
-export function saveFile(filename: string, buffer: ArrayBuffer, summary: WorkoutSummary): void {
-	const base64 = arrayBufferToBase64(buffer);
-	const files = getStoredFiles();
+export async function getStoredFiles(): Promise<StoredFileMeta[]> {
+	await migrateLegacy();
+	const db = await getDb();
+	if (!db) {
+		return [...memoryFallback?.values() ?? []].map((e) => e.meta).sort(byNewest);
+	}
+	const entries = (await runStore('readonly', (s) => s.getAll())) as StoredEntry[] | null;
+	return (entries ?? []).map((e) => e.meta).sort(byNewest);
+}
+
+export async function saveFile(filename: string, buffer: ArrayBuffer, summary: WorkoutSummary): Promise<void> {
+	await migrateLegacy();
 	const meta: StoredFileMeta = {
 		filename,
 		sport: summary.sport,
@@ -59,33 +149,38 @@ export function saveFile(filename: string, buffer: ArrayBuffer, summary: Workout
 		totalDuration: summary.totalDuration,
 		savedAt: new Date().toISOString(),
 	};
+	const entry: StoredEntry = { meta, buffer };
 
-	const dupIdx = files.findIndex((f) => isDuplicate(f, meta));
-	if (dupIdx >= 0) {
-		const old = files[dupIdx];
-		// Remove old file data if filename changed
-		if (old.filename !== filename) {
-			localStorage.removeItem(FILE_PREFIX + old.filename);
-		}
-		files.splice(dupIdx, 1);
+	const db = await getDb();
+	if (!db) {
+		memoryFallback?.set(filename, entry);
+		return;
 	}
 
-	// Save new file data and meta
-	localStorage.setItem(FILE_PREFIX + filename, base64);
-	files.unshift(meta); // newest first
-	localStorage.setItem(META_KEY, JSON.stringify(files));
+	// Replace any duplicate (same workout previously stored under another name)
+	const existing = (await runStore('readonly', (s) => s.getAll())) as StoredEntry[] | null;
+	const dup = (existing ?? []).find((e) => isDuplicate(e.meta, meta));
+	if (dup && dup.meta.filename !== filename) {
+		await runStore('readwrite', (s) => s.delete(dup.meta.filename));
+	}
+
+	await runStore('readwrite', (s) => s.put(entry));
 }
 
-export function loadFileBuffer(filename: string): ArrayBuffer | null {
-	const base64 = localStorage.getItem(FILE_PREFIX + filename);
-	if (!base64) return null;
-	return base64ToArrayBuffer(base64);
+export async function loadFileBuffer(filename: string): Promise<ArrayBuffer | null> {
+	const db = await getDb();
+	if (!db) return memoryFallback?.get(filename)?.buffer ?? null;
+	const entry = (await runStore('readonly', (s) => s.get(filename))) as StoredEntry | null;
+	return entry?.buffer ?? null;
 }
 
-export function deleteFile(filename: string): void {
-	localStorage.removeItem(FILE_PREFIX + filename);
-	const files = getStoredFiles().filter((f) => f.filename !== filename);
-	localStorage.setItem(META_KEY, JSON.stringify(files));
+export async function deleteFile(filename: string): Promise<void> {
+	const db = await getDb();
+	if (!db) {
+		memoryFallback?.delete(filename);
+		return;
+	}
+	await runStore('readwrite', (s) => s.delete(filename));
 }
 
 export function formatDuration(seconds: number): string {

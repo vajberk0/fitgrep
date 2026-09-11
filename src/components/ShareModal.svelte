@@ -28,8 +28,8 @@
 		copied = false;
 
 		try {
-			// Load raw FIT file from localStorage
-			const buffer = loadFileBuffer(store.currentFilename);
+			// Load raw FIT file from IndexedDB
+			const buffer = await loadFileBuffer(store.currentFilename);
 			if (!buffer) {
 				throw new Error('File data not found in local storage. Please re-upload the file.');
 			}

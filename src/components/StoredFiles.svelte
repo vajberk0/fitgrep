@@ -6,7 +6,7 @@
 		store.setLoading(true);
 		store.setError(null);
 		try {
-			const buffer = loadFileBuffer(meta.filename);
+			const buffer = await loadFileBuffer(meta.filename);
 			if (!buffer) {
 				store.setError('File data not found in storage. Please re-upload.');
 				store.refreshStoredFiles();
@@ -23,9 +23,9 @@
 		}
 	}
 
-	function handleDelete(e: MouseEvent, filename: string) {
+	async function handleDelete(e: MouseEvent, filename: string) {
 		e.stopPropagation();
-		deleteFile(filename);
+		await deleteFile(filename);
 		store.refreshStoredFiles();
 	}
 

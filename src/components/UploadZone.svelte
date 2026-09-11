@@ -45,8 +45,13 @@
 			const { parseFitFile } = await import('$lib/parser');
 			const data = await parseFitFile(buffer);
 
-			// Save to localStorage (overwrites if same filename)
-			saveFile(file.name, buffer, data.summary);
+			// Persist to browser storage (best-effort — a storage failure must
+			// never prevent the parsed workout from being displayed)
+			try {
+				await saveFile(file.name, buffer, data.summary);
+			} catch (err) {
+				console.warn('Could not save workout to browser storage:', err);
+			}
 			store.refreshStoredFiles();
 
 			store.setWorkoutData(data, file.name);

@@ -203,12 +203,12 @@ function setError(msg: string | null) {
 	errorMessage = msg;
 }
 
-function refreshStoredFiles() {
-	storedFiles = getStoredFiles();
+async function refreshStoredFiles() {
+	storedFiles = await getStoredFiles();
 }
 
-// Initialize stored files from localStorage
-storedFiles = getStoredFiles();
+// Initialize stored files from IndexedDB
+refreshStoredFiles();
 
 // ─── Export as object for reactivity ──────────────────────────────────────
 

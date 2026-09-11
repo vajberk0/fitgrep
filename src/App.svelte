@@ -45,8 +45,12 @@
 					const { parseFitFile } = await import('$lib/parser');
 					const data = await parseFitFile(shared.buffer);
 
-					// Save to localStorage so user can revisit without the share link
-					saveFile(shared.filename, shared.buffer, data.summary);
+					// Save so the user can revisit without the share link (best-effort)
+					try {
+						await saveFile(shared.filename, shared.buffer, data.summary);
+					} catch (err) {
+						console.warn('Could not save shared workout to browser storage:', err);
+					}
 					store.refreshStoredFiles();
 
 					store.setWorkoutData(data, shared.filename);
@@ -90,7 +94,7 @@
 		const lastFile = loadLastFile();
 		if (!lastFile) return;
 
-		const buffer = loadFileBuffer(lastFile);
+		const buffer = await loadFileBuffer(lastFile);
 		if (!buffer) return; // file was deleted from storage
 
 		store.setLoading(true);
